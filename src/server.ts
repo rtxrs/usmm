@@ -55,6 +55,7 @@ const apiLimiter = rateLimit({
     const platformId = req.headers['x-platform-id'] || req.headers['x-fb-page-id'] || 'anonymous';
     return `${req.ip}_${platformId}`;
   },
+  validate: { keyGeneratorIpFallback: false }, // Resolve ERR_ERL_KEY_GEN_IPV6
   message: { success: false, error: 'Too many requests for this platform/IP, please try again later.' }
 });
 

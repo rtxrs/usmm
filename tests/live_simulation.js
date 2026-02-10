@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:3005';
-//const BASE_URL = 'https://usmm.global-desk.top'
+//const BASE_URL = 'http://localhost:3005';
+const BASE_URL = 'https://usmm.global-desk.top'
 
 // Generate 100 unique project scenarios
 const scenarios = Array.from({ length: 100 }).map((_, i) => ({
