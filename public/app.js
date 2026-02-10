@@ -151,7 +151,7 @@ function setupPageNodes(pageId, profilePic) {
 function createDock(container, img) {
   const div = document.createElement('div');
   div.className = 'dock';
-  div.innerHTML = `<div class="dock-glow"></div><img src="${img}" onerror="this.src='https://placehold.co/40?text=FB'">`;
+  div.innerHTML = `<div class="dock-glow"></div><img src="${img}" onerror="this.src='https://placehold.co/40?text=USSM'">`;
   container.appendChild(div);
   return div;
 }

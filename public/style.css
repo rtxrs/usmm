@@ -1,7 +1,7 @@
 :root {
   --bg-dark: #020617;
   --neon-pink: #ff007f;
-  --fb-blue: #1877f2;
+  --ussm-blue: #00d4ff;
   --neon-yellow: #ffff00;
   --neon-green: #22c55e;
   --neon-red: #ef4444;
@@ -90,7 +90,7 @@ body {
 }
 
 /* Hub / Hexagon */
-.ufbm-core {
+.ussm-core {
   width: 140px;
   height: 121px;
   background: var(--neon-pink); /* Outer Pink Line */
@@ -131,10 +131,10 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 10;
-  color: var(--fb-blue);
+  color: var(--ussm-blue);
   font-size: 1.8rem;
   font-weight: bold;
-  text-shadow: 0 0 15px var(--fb-blue);
+  text-shadow: 0 0 15px var(--ussm-blue);
   letter-spacing: 2px;
 }
 
@@ -221,8 +221,8 @@ body {
 
 .active-core .core-inner {
   animation: counterRotate 3s infinite linear;
-  color: var(--fb-blue);
-  text-shadow: 0 0 25px var(--fb-blue);
+  color: var(--ussm-blue);
+  text-shadow: 0 0 25px var(--ussm-blue);
 }
 
 .dry-run-banner {

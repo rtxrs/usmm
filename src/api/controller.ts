@@ -75,11 +75,11 @@ export class FISController {
   }
 
   private static getFIS(req: Request): { fis: any, error?: string } {
-    const pageId = req.headers['x-fb-page-id'] as string || config.FB_PAGE_ID;
-    const token = req.headers['x-fb-token'] as string || config.FB_PAGE_ACCESS_TOKEN;
+    const pageId = (req.headers['x-platform-id'] || req.headers['x-fb-page-id'] || config.FB_PAGE_ID) as string;
+    const token = (req.headers['x-platform-token'] || req.headers['x-fb-token'] || config.FB_PAGE_ACCESS_TOKEN) as string;
 
     if (!pageId || !token) {
-      return { fis: null, error: 'Missing Credentials: Provide x-fb-page-id/x-fb-token headers or configure defaults.' };
+      return { fis: null, error: 'Missing Credentials: Provide x-platform-id/x-platform-token headers or configure defaults.' };
     }
 
     return { fis: FISRegistry.getInstance(pageId, token) };
@@ -87,15 +87,26 @@ export class FISController {
 
   static async createPost(req: Request, res: Response): Promise<void> {
     try {
+      const rawBody = req.body;
+
+      if (!rawBody.platform) {
+        res.status(400).json({ success: false, error: 'Missing required parameter: platform' });
+        return;
+      }
+
       const { fis, error } = FISController.getFIS(req);
       if (error) {
         res.status(401).json({ success: false, error });
         return;
       }
 
-      // 1. Construct the payload from body and files
-      const rawBody = req.body;
       const files = req.files as Express.Multer.File[];
+
+      // Platform check
+      if (rawBody.platform === 'x') {
+        res.status(501).json({ success: false, error: 'Platform X (Twitter) is not yet implemented.' });
+        return;
+      }
 
       // Validation for Resolution
       if (files && files.length > 0) {
@@ -159,6 +170,18 @@ export class FISController {
 
   static async updatePost(req: Request, res: Response): Promise<void> {
     try {
+      const { platform, caption, priority, dryRun } = req.body;
+
+      if (!platform) {
+        res.status(400).json({ success: false, error: 'Missing required parameter: platform' });
+        return;
+      }
+
+      if (platform === 'x') {
+        res.status(501).json({ success: false, error: 'Platform X (Twitter) is not yet implemented.' });
+        return;
+      }
+
       const { fis, error } = FISController.getFIS(req);
       if (error) {
         res.status(401).json({ success: false, error });
@@ -166,7 +189,6 @@ export class FISController {
       }
 
       const { id } = req.params;
-      const { caption, priority, dryRun } = req.body;
 
       if (!caption) {
         res.status(400).json({ success: false, error: 'Caption is required' });

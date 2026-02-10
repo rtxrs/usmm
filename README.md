@@ -1,32 +1,33 @@
-# Unified Facebook Manager (UFBM)
+# Unified Social Media Manager (USSM)
 
-UFBM is a high-performance, multi-tenant Facebook gateway designed to centralize and optimize Page interactions. It provides a standardized interface for posting content, managing media, and monitoring activity across multiple Facebook Pages.
+USSM is a high-performance, multi-tenant gateway designed to centralize and optimize social media interactions. It provides a standardized interface for posting content, managing media, and monitoring activity across multiple platforms like Facebook and (soon) X/Twitter.
 
-**Production Endpoint:** `https://ufbm.global-desk.top`
-**Live Monitor:** `https://ufbm.global-desk.top`
+**Production Endpoint:** `https://ussm.global-desk.top`
+**Live Monitor:** `https://ussm.global-desk.top`
 
 ---
 
-## 📖 How to Use UFBM
+## 📖 How to Use USSM
 
-UFBM operates as a secure proxy. You can target specific Facebook Pages by providing their credentials in the request headers.
+USSM operates as a secure proxy. You can target specific accounts/pages by providing their credentials in the request headers.
 
 ### 1. Request Headers
-To target a specific Facebook Page, include these headers in your request. If omitted, the service may use configured defaults.
+To target a specific social media account, include these headers in your request.
 
 | Header | Description |
 | :--- | :--- |
-| `x-fb-page-id` | The numeric ID of the target Facebook Page. |
-| `x-fb-token` | A valid Page Access Token with `pages_manage_posts` permissions. |
+| `x-platform-id` | The unique ID of the target Page/Account (e.g. Facebook Page ID). |
+| `x-platform-token` | A valid Access Token for the target platform. |
 
 ---
 
 ### 2. API Endpoints
 
 #### `POST /v1/post`
-Create a new post on the Page Feed and/or Story. Supports JSON or `multipart/form-data`.
+Create a new post on the specified platform(s). Supports JSON or `multipart/form-data`.
 
 **JSON Parameters:**
+*   `platform` (string, **required**): The target platform. Supported: `fb` (Facebook). Coming soon: `x` (Twitter).
 *   `caption` (string, required): The text content of the post.
 *   `media` (array, optional): List of media objects.
     *   `source` (string/buffer): URL or binary data of the image/video.
@@ -41,6 +42,7 @@ Create a new post on the Page Feed and/or Story. Supports JSON or `multipart/for
 **Example Request:**
 ```json
 {
+  "platform": "fb",
   "caption": "Check out our latest announcement!",
   "priority": 5,
   "options": {
@@ -54,7 +56,8 @@ Create a new post on the Page Feed and/or Story. Supports JSON or `multipart/for
 Edit an existing post's caption.
 
 **Parameters:**
-*   `id` (path): The Facebook Post ID.
+*   `id` (path): The platform-specific Post ID.
+*   `platform` (string, **required**): The target platform (e.g., `fb`).
 *   `caption` (string, required): The new text content.
 *   `priority` (number, optional): Processing priority.
 *   `dryRun` (boolean, optional): If true, simulates the update.
@@ -62,6 +65,7 @@ Edit an existing post's caption.
 **Example Request:**
 ```json
 {
+  "platform": "fb",
   "caption": "Update: The event has been rescheduled to 6 PM.",
   "priority": 10
 }
@@ -79,7 +83,7 @@ Basic service health check and uptime information.
 When using `multipart/form-data`, attach your image/video files to the `media` field.
 *   **File Limit**: 1MB per file.
 *   **Max Resolution**: 3000x3000px.
-*   **Auto-Optimization**: UFBM automatically strips metadata and applies high-quality compression to ensure optimal delivery and privacy.
+*   **Auto-Optimization**: USSM automatically strips metadata and applies high-quality compression to ensure optimal delivery and privacy.
 
 ---
 

@@ -8,6 +8,7 @@ export const MediaSchema = z.object({
 });
 
 export const PostRequestSchema = z.object({
+  platform: z.enum(['fb', 'x']),
   caption: z.string().min(1),
   media: z.array(MediaSchema).optional(),
   priority: z.nativeEnum(WorkloadPriority).default(WorkloadPriority.NORMAL),
