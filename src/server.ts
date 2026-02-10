@@ -94,7 +94,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // Start Server
 if (process.env.NODE_ENV !== 'test') {
   httpServer.listen(config.PORT, () => {
-    logger.info(`🚀 USSM Server running on port ${config.PORT}`, {
+    logger.info(`🚀 USMM Server running on port ${config.PORT}`, {
       pageId: config.FB_PAGE_ID,
       concurrency: config.CONCURRENCY,
       nodeEnv: process.env.NODE_ENV

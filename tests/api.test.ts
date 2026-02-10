@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/server.js';
 
-describe('USSM API Endpoints', () => {
+describe('USMM API Endpoints', () => {
   
   it('GET /health should return 200 OK', async () => {
     const res = await request(app).get('/health');

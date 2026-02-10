@@ -1,7 +1,7 @@
-# USSM Expansion Plan: X (Twitter) Integration
+# USMM Expansion Plan: X (Twitter) Integration
 
 ## 1. Overview
-The goal is to evolve the service from a Facebook-only gateway (UFBM) to a multi-platform Unified Social Media Manager (USSM). The first additional platform will be X (Twitter).
+The goal is to evolve the service from a Facebook-only gateway (UFBM) to a multi-platform Unified Social Media Manager (USMM). The first additional platform will be X (Twitter).
 
 ## 2. Architecture Updates
 
@@ -17,7 +17,7 @@ interface SocialMediaClient {
 
 ### 2.2 Registry Evolution
 *   **Current:** `FISRegistry` maps `PageID -> FIS Instance`
-*   **New:** `USSMRegistry` maps `Platform:ID -> Service Instance`
+*   **New:** `USMMRegistry` maps `Platform:ID -> Service Instance`
     *   Example Key: `fb:123456789` or `x:987654321`
 
 ### 2.3 Twitter Client (`src/core/TwitterClient.ts`)

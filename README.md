@@ -1,15 +1,15 @@
-# Unified Social Media Manager (USSM)
+# Unified Social Media Manager (USMM)
 
-USSM is a high-performance, multi-tenant gateway designed to centralize and optimize social media interactions. It provides a standardized interface for posting content, managing media, and monitoring activity across multiple platforms like Facebook and (soon) X/Twitter.
+USMM is a high-performance, multi-tenant gateway designed to centralize and optimize social media interactions. It provides a standardized interface for posting content, managing media, and monitoring activity across multiple platforms like Facebook and (soon) X/Twitter.
 
-**Production Endpoint:** `https://ussm.global-desk.top`
-**Live Monitor:** `https://ussm.global-desk.top`
+**Production Endpoint:** `https://usmm.global-desk.top`
+**Live Monitor:** `https://usmm.global-desk.top`
 
 ---
 
-## 📖 How to Use USSM
+## 📖 How to Use USMM
 
-USSM operates as a secure proxy. You can target specific accounts/pages by providing their credentials in the request headers.
+USMM operates as a secure proxy. You can target specific accounts/pages by providing their credentials in the request headers.
 
 ### 1. Request Headers
 To target a specific social media account, include these headers in your request.
@@ -20,7 +20,7 @@ To target a specific social media account, include these headers in your request
 | `x-platform-token` | The authentication secret. Format varies by platform (see below). |
 
 #### Authentication Schemas
-USSM uses an **Adaptive Token Strategy** to support diverse platform requirements while remaining a stateless proxy. The content of the `x-platform-token` header is interpreted based on the `platform` parameter:
+USMM uses an **Adaptive Token Strategy** to support diverse platform requirements while remaining a stateless proxy. The content of the `x-platform-token` header is interpreted based on the `platform` parameter:
 
 1.  **Raw String (Simple Token)**
     *   Best for: Facebook, simple API keys.
@@ -98,7 +98,7 @@ Basic service health check and uptime information.
 When using `multipart/form-data`, attach your image/video files to the `media` field.
 *   **File Limit**: 1MB per file.
 *   **Max Resolution**: 3000x3000px.
-*   **Auto-Optimization**: USSM automatically strips metadata and applies high-quality compression to ensure optimal delivery and privacy.
+*   **Auto-Optimization**: USMM automatically strips metadata and applies high-quality compression to ensure optimal delivery and privacy.
 
 ---
 
@@ -139,7 +139,7 @@ graph TD
 ## 🧪 Testing with Dry Run
 You can simulate any request without hitting the Facebook API by adding `"dryRun": true` to your payload. 
 *   The API returns a mock `postId` (e.g., `DRY_RUN_abc123`).
-*   The **Live Monitor** will label the data packet as **"DRY"** for visual verification.
+*   The **Live Monitor** (`https://usmm.global-desk.top`) will label the data packet as **"DRY"** for visual verification.
 
 ---
 

@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'ussm',
+      name: 'usmm',
       script: 'src/server.ts',
       exec_mode: 'fork',
       interpreter: 'node',
