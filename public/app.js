@@ -197,7 +197,7 @@ function setupPageNode(pageId, profilePic, color) {
     stemWire.style.setProperty('stroke', color, 'important');
     stemWire.style.setProperty('opacity', '0.15', 'important');
     
-    const sWidth = 80; // Smaller width
+    const sWidth = 60; // Narrower width
     const nodeStartX = centerX + (Math.random() - 0.5) * sWidth;
     stemWire.setAttribute('d', `M ${nodeStartX} ${containerRect.height} L ${nodeStartX} ${centerY} L ${centerX} ${centerY}`);
     svgLayer.appendChild(stemWire);
@@ -252,24 +252,33 @@ function animate() {
     const dcx = node.x - centerX;
     const dcy = node.y - centerY;
     const distCenter = Math.sqrt(dcx*dcx + dcy*dcy);
-    if (distCenter < 140) {
-      node.vx += (dcx / distCenter) * 0.08;
-      node.vy += (dcy / distCenter) * 0.08;
+
+    // 2. Hub Repulsion (Don't let them overlap the core)
+    if (distCenter < 160) {
+      const force = (160 - distCenter) * 0.005;
+      node.vx += (dcx / distCenter) * force;
+      node.vy += (dcy / distCenter) * force;
     }
 
+    // 3. STEM WALL (Exclusion Zone)
     if (node.y > centerY) {
       const distX = Math.abs(node.x - centerX);
-      if (distX < 100) {
+      const wallWidth = 80; // slightly wider than the wires for safety
+      if (distX < wallWidth) {
         node.vx += (node.x > centerX ? 1 : -1) * 0.15;
         node.vy -= 0.03; 
       }
     }
 
-    const maxRadius = Math.min(centerX, centerY) * 0.9;
-    if (distCenter > maxRadius) {
-      node.vx -= (dcx / distCenter) * 0.03;
-      node.vy -= (dcy / distCenter) * 0.03;
-    }
+    // 4. Constant Attraction to Core (Gravity)
+    // Petals move inward to fill gaps
+    const gravity = 0.015;
+    node.vx -= (dcx / distCenter) * gravity;
+    node.vy -= (dcy / distCenter) * gravity;
+
+    // 5. Random Jitter
+    node.vx += (Math.random() - 0.5) * 0.02;
+    node.vy += (Math.random() - 0.5) * 0.02;
 
     node.x += node.vx;
     node.y += node.vy;
