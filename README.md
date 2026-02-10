@@ -17,7 +17,22 @@ To target a specific social media account, include these headers in your request
 | Header | Description |
 | :--- | :--- |
 | `x-platform-id` | The unique ID of the target Page/Account (e.g. Facebook Page ID). |
-| `x-platform-token` | A valid Access Token for the target platform. |
+| `x-platform-token` | The authentication secret. Format varies by platform (see below). |
+
+#### Authentication Schemas
+USSM uses an **Adaptive Token Strategy** to support diverse platform requirements while remaining a stateless proxy. The content of the `x-platform-token` header is interpreted based on the `platform` parameter:
+
+1.  **Raw String (Simple Token)**
+    *   Best for: Facebook, simple API keys.
+    *   **Value:** `EAAg...`
+    
+2.  **JSON String (Multi-part Auth)**
+    *   Best for: Platforms requiring multiple keys (like X/Twitter).
+    *   **Value:** `{"apiKey": "...", "apiSecret": "...", ...}`
+
+3.  **Base64 Encoded (Recommended)**
+    *   Best for: Avoiding special character issues in HTTP headers when sending JSON.
+    *   **Logic:** The service detects if the string is Base64 and automatically decodes it before parsing.
 
 ---
 

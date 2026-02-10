@@ -22,7 +22,18 @@ interface SocialMediaClient {
 
 ### 2.3 Twitter Client (`src/core/TwitterClient.ts`)
 *   **API Version:** X API v2.
-*   **Auth:** OAuth 1.0a (User Context) is required for posting media and tweets on behalf of a user. The `x-platform-token` header may need to carry a JSON string containing `{ appKey, appSecret, accessToken, accessSecret }` or we establish a standard format.
+*   **Auth Strategy (Adaptive Token):** 
+    *   The `x-platform-token` header will be parsed.
+    *   If it starts with `{`, it is treated as a JSON object containing OAuth 1.0a keys:
+        ```typescript
+        interface TwitterCredentials {
+          apiKey: string;
+          apiSecret: string;
+          accessToken: string;
+          accessSecret: string;
+        }
+        ```
+    *   The `TwitterClient` constructor will validate these fields.
 *   **Media Upload:** Requires the chunked upload v1.1 endpoint (init, append, finalize).
 
 ## 3. Rate Limiting Strategy
