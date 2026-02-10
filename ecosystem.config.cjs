@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'ufbm',
+      name: 'ussm',
       script: 'src/server.ts',
       interpreter: 'node',
       interpreter_args: '--import tsx',
@@ -10,9 +10,6 @@ module.exports = {
       watch: false,
       max_memory_restart: '1G',
       env: {
-        NODE_ENV: 'development',
-      },
-      env_production: {
         NODE_ENV: 'production',
       },
       log_date_format: 'YYYY-MM-DD HH:mm:ss',

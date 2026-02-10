@@ -94,6 +94,12 @@ export class FISController {
         return;
       }
 
+      // Platform check
+      if (rawBody.platform === 'x') {
+        res.status(501).json({ success: false, error: 'Platform X (Twitter) is not yet implemented.' });
+        return;
+      }
+
       const { fis, error } = FISController.getFIS(req);
       if (error) {
         res.status(401).json({ success: false, error });
@@ -101,12 +107,6 @@ export class FISController {
       }
 
       const files = req.files as Express.Multer.File[];
-
-      // Platform check
-      if (rawBody.platform === 'x') {
-        res.status(501).json({ success: false, error: 'Platform X (Twitter) is not yet implemented.' });
-        return;
-      }
 
       // Validation for Resolution
       if (files && files.length > 0) {
