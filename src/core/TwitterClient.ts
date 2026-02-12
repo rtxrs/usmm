@@ -51,9 +51,10 @@ export class TwitterClient {
       let mediaId: string;
       
       if (asset.source instanceof Buffer) {
-        mediaId = await this.api.v1.uploadMedia(asset.source, { 
-          mimeType: asset.type === 'video' ? 'video/mp4' : 'image/png' 
-        });
+        // Use provided mimeType or fall back to standard types
+        const mimeType = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+        
+        mediaId = await this.api.v1.uploadMedia(asset.source, { mimeType });
       } else {
         // twitter-api-v2 doesn't directly support URL upload in v1.1 simple upload
         // We would need to fetch it first. For now, we assume Buffer (coming from USMM Multipart)

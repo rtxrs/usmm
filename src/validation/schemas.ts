@@ -4,6 +4,7 @@ import { WorkloadPriority } from '../types/index.js';
 export const MediaSchema = z.object({
   source: z.union([z.instanceof(Buffer), z.string()]),
   type: z.enum(['image', 'video']),
+  mimeType: z.string().optional(),
   altText: z.string().optional(),
 });
 

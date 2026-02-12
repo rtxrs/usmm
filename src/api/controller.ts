@@ -104,6 +104,7 @@ export class SocialMediaController {
           payload.media.push({
             source: buffer,
             type: file.mimetype.startsWith('video') ? 'video' : 'image',
+            mimeType: !isDryRun && file.mimetype.startsWith('image/') ? 'image/jpeg' : file.mimetype,
           });
         }
       }

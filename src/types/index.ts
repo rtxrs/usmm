@@ -7,6 +7,7 @@ export enum WorkloadPriority {
 export type MediaAsset = {
   source: Buffer | string; // Buffer or file path
   type: 'image' | 'video';
+  mimeType?: string;
   altText?: string;
 };
 
