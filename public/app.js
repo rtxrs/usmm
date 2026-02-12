@@ -283,6 +283,7 @@ class SpiritOrb {
         this.color = color || CONFIG.orbColor;
         this.profilePic = profilePic;
         this.isDryRun = isDryRun;
+        this.isProcessing = false;
         
         this.state = isDryRun ? 'FLOAT' : 'WAITING'; 
         this.x = isDryRun ? (Math.random() * width) : 0;
@@ -296,6 +297,7 @@ class SpiritOrb {
 
         this.waitDuration = 200; 
         this.stemDuration = 1000;
+        this.coreDuration = 500; // Time to dwell at core visually if processing is fast
         this.pedicelDuration = 600; 
         this.pistilDuration = 1500;
         this.floatPhase = Math.random() * Math.PI * 2;
@@ -315,6 +317,11 @@ class SpiritOrb {
             return;
         }
 
+        const hubEl = document.getElementById('hub-wrapper');
+        const hubRect = hubEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const hubY = (hubRect.top - containerRect.top) + (hubRect.height / 2);
+
         if (this.state === 'WAITING') {
             this.timer += 16;
             this.x = stemBaseX;
@@ -329,8 +336,31 @@ class SpiritOrb {
             this.timer += 16;
             const t = Math.min(1, this.timer / this.stemDuration);
             this.x = stemBaseX;
-            const stemHeight = stemBaseY - stemTipY;
-            this.y = stemBaseY - (stemHeight * t);
+            const stemHeightToHub = stemBaseY - hubY;
+            this.y = stemBaseY - (stemHeightToHub * t);
+            
+            if (t >= 1) {
+                this.state = 'AT_CORE';
+                this.timer = 0;
+            }
+        }
+        else if (this.state === 'AT_CORE') {
+            this.timer += 16;
+            this.x = stemBaseX;
+            this.y = hubY;
+            
+            // Wait for both a minimum visual dwell AND the processing signal
+            if (this.isProcessing && this.timer > this.coreDuration) {
+                this.state = 'STEM_TO_LILY';
+                this.timer = 0;
+            }
+        }
+        else if (this.state === 'STEM_TO_LILY') {
+            this.timer += 16;
+            const t = Math.min(1, this.timer / 400); // Quick travel to lily center
+            this.x = stemBaseX;
+            const dist = hubY - stemTipY;
+            this.y = hubY - (dist * t);
             
             if (t >= 1) {
                 this.state = 'PEDICEL';
@@ -624,7 +654,7 @@ class Flower {
         this.drawPedicels(stemBaseX, stemTipY, timeSinceStart);
         
         for (const orb of this.orbs.values()) {
-             if (!orb.finished && !orb.isDryRun && (orb.state === 'WAITING' || orb.state === 'STEM' || orb.state === 'PEDICEL')) {
+             if (!orb.finished && !orb.isDryRun && (orb.state === 'WAITING' || orb.state === 'STEM' || orb.state === 'AT_CORE' || orb.state === 'STEM_TO_LILY' || orb.state === 'PEDICEL')) {
                  orb.update(stemBaseX, stemBaseY, stemTipY, this.baseScale, timeSinceStart);
                  orb.draw(ctx);
              }
@@ -720,6 +750,9 @@ async function handleUpdate(data) {
         processingPages.add(pageId);
         coreHub.classList.add('active-core');
         coreHub.style.setProperty('filter', `drop-shadow(0 0 25px ${neonRed})`, 'important');
+        
+        const orb = flower.orbs.get(requestId);
+        if (orb) orb.isProcessing = true;
     } else if (status === 'completed' || status === 'failed') {
         processingPages.delete(pageId);
         if (processingPages.size === 0) {
