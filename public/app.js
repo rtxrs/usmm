@@ -6,7 +6,7 @@ const coreHub = document.getElementById('core-hub');
 const canvas = document.getElementById('lily-canvas');
 const ctx = canvas.getContext('2d');
 
-let width, height;
+let width, height, hubY;
 let flower;
 const pageNodes = new Map(); // pageId -> { el, pistil, color }
 const processingPages = new Set(); 
@@ -308,7 +308,7 @@ class SpiritOrb {
         }
     }
 
-    update(stemBaseX, stemBaseY, stemTipY, baseScale, timeSinceStart) {
+    update(stemBaseX, stemBaseY, stemTipY, baseScale, timeSinceStart, stemTipX) {
         if (this.isDryRun) {
             this.timer += 16;
             this.y -= 0.5; // Slower float for dry run
@@ -317,10 +317,17 @@ class SpiritOrb {
             return;
         }
 
-        const hubEl = document.getElementById('hub-wrapper');
-        const hubRect = hubEl.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const hubY = (hubRect.top - containerRect.top) + (hubRect.height / 2);
+        // Calculate current stem curve parameters
+        const stemTotalHeight = stemBaseY - stemTipY;
+        const hubDistFromBase = stemBaseY - hubY;
+        const tHub = hubDistFromBase / stemTotalHeight; // Proportion of stem where hub sits
+
+        const getStemPoint = (t) => {
+            const p0 = { x: stemBaseX, y: stemBaseY };
+            const p1 = { x: stemBaseX, y: (stemBaseY + stemTipY) / 2 }; // Match drawMainStem control point
+            const p2 = { x: stemTipX, y: stemTipY };
+            return getQuadBezierPoint(t, p0, p1, p2);
+        };
 
         if (this.state === 'WAITING') {
             this.timer += 16;
@@ -334,35 +341,42 @@ class SpiritOrb {
         }
         else if (this.state === 'STEM') {
             this.timer += 16;
-            const t = Math.min(1, this.timer / this.stemDuration);
-            this.x = stemBaseX;
-            const stemHeightToHub = stemBaseY - hubY;
-            this.y = stemBaseY - (stemHeightToHub * t);
+            const progress = Math.min(1, this.timer / this.stemDuration);
+            const t = progress * tHub; // Move from 0 to tHub
+            const pos = getStemPoint(t);
+            this.x = pos.x;
+            this.y = pos.y;
             
-            if (t >= 1) {
-                this.state = 'AT_CORE';
+            if (progress >= 1) {
+                if (this.isProcessing) {
+                    this.state = 'STEM_TO_LILY';
+                } else {
+                    this.state = 'AT_CORE';
+                }
                 this.timer = 0;
             }
         }
         else if (this.state === 'AT_CORE') {
             this.timer += 16;
-            this.x = stemBaseX;
-            this.y = hubY;
+            const pos = getStemPoint(tHub); // Stay attached to the stem at the hub's height
+            this.x = pos.x;
+            this.y = pos.y;
             
-            // Wait for both a minimum visual dwell AND the processing signal
-            if (this.isProcessing && this.timer > this.coreDuration) {
+            // Immediately transition when processing starts
+            if (this.isProcessing) {
                 this.state = 'STEM_TO_LILY';
                 this.timer = 0;
             }
         }
         else if (this.state === 'STEM_TO_LILY') {
             this.timer += 16;
-            const t = Math.min(1, this.timer / 400); // Quick travel to lily center
-            this.x = stemBaseX;
-            const dist = hubY - stemTipY;
-            this.y = hubY - (dist * t);
+            const progress = Math.min(1, this.timer / 400);
+            const t = tHub + (progress * (1 - tHub)); // Move from tHub to 1.0
+            const pos = getStemPoint(t);
+            this.x = pos.x;
+            this.y = pos.y;
             
-            if (t >= 1) {
+            if (progress >= 1) {
                 this.state = 'PEDICEL';
                 this.timer = 0;
             }
@@ -372,7 +386,7 @@ class SpiritOrb {
             const t = Math.min(1, this.timer / this.pedicelDuration);
             const easedT = easeInOutQuad(t);
             
-            const startX = stemBaseX;
+            const startX = stemTipX;
             const startY = stemTipY;
             const endX = this.targetHead.x;
             const endY = this.targetHead.y;
@@ -593,14 +607,14 @@ class Flower {
         }
     }
 
-    drawHeadComponents(headIndex, drawPistils, drawPetals, drawOrbs, stemBaseX, stemBaseY, stemTipY, timeSinceStart) {
+    drawHeadComponents(headIndex, drawPistils, drawPetals, drawOrbs, stemBaseX, stemBaseY, stemTipY, timeSinceStart, stemTipX) {
         const head = this.heads[headIndex];
 
         if (drawOrbs) {
             for (const orb of this.orbs.values()) {
                 if (!orb.finished && orb.targetHead === head) {
                     if (orb.state === 'PISTIL' || orb.state === 'FLOAT') {
-                        orb.update(stemBaseX, stemBaseY, stemTipY, this.baseScale, timeSinceStart);
+                        orb.update(stemBaseX, stemBaseY, stemTipY, this.baseScale, timeSinceStart, stemTipX);
                         orb.draw(ctx);
                     }
                 }
@@ -619,16 +633,22 @@ class Flower {
     draw(currentTime) {
         const timeSinceStart = currentTime - this.startTime;
         
-        const stemBaseX = width / 2;
-        const stemBaseY = height;
-        const stemTipY = height * 0.6; // Maintained 60% position
+        // Sway Logic
+        const swayFreq = 0.0012;
+        const swayAmp = 25; // Pixels of sway at the tip
+        const swayX = Math.sin(currentTime * swayFreq) * swayAmp;
 
-        this.heads.forEach(h => h.updatePos(stemBaseX, stemTipY));
+        const stemBaseX = width / 2;
+        const stemBaseY = height + 100; // Hidden anchor point below screen
+        const stemTipY = height * 0.6;
+        const stemTipX = stemBaseX + swayX;
+
+        this.heads.forEach(h => h.updatePos(stemTipX, stemTipY));
 
         // Draw Dry Run Orbs in the far background
         for (const orb of this.orbs.values()) {
             if (!orb.finished && orb.isDryRun) {
-                orb.update(stemBaseX, stemBaseY, stemTipY, this.baseScale, timeSinceStart);
+                orb.update(stemBaseX, stemBaseY, stemTipY, this.baseScale, timeSinceStart, stemTipX);
                 orb.draw(ctx);
             }
         }
@@ -646,26 +666,26 @@ class Flower {
         });
 
         // --- LAYER 1: BACK (Flower 0/Middle) ---
-        this.drawHeadComponents(0, false, true, false, stemBaseX, stemBaseY, stemTipY, timeSinceStart); // Petals
-        this.drawHeadComponents(0, true, false, true, stemBaseX, stemBaseY, stemTipY, timeSinceStart);  // Pistils & Orbs
+        this.drawHeadComponents(0, false, true, false, stemBaseX, stemBaseY, stemTipY, timeSinceStart, stemTipX); // Petals
+        this.drawHeadComponents(0, true, false, true, stemBaseX, stemBaseY, stemTipY, timeSinceStart, stemTipX);  // Pistils & Orbs
 
         // --- LAYER 2: MIDDLE (Stems) ---
-        this.drawMainStem(stemBaseX, stemBaseY, stemTipY, timeSinceStart);
-        this.drawPedicels(stemBaseX, stemTipY, timeSinceStart);
+        this.drawMainStem(stemBaseX, stemBaseY, stemTipX, stemTipY, timeSinceStart);
+        this.drawPedicels(stemTipX, stemTipY, timeSinceStart);
         
         for (const orb of this.orbs.values()) {
              if (!orb.finished && !orb.isDryRun && (orb.state === 'WAITING' || orb.state === 'STEM' || orb.state === 'AT_CORE' || orb.state === 'STEM_TO_LILY' || orb.state === 'PEDICEL')) {
-                 orb.update(stemBaseX, stemBaseY, stemTipY, this.baseScale, timeSinceStart);
+                 orb.update(stemBaseX, stemBaseY, stemTipY, this.baseScale, timeSinceStart, stemTipX);
                  orb.draw(ctx);
              }
         }
 
         // --- LAYER 3: FRONT (Flower 1 & 2 / Left & Right) ---
-        this.drawHeadComponents(1, false, true, false, stemBaseX, stemBaseY, stemTipY, timeSinceStart);
-        this.drawHeadComponents(1, true, false, true, stemBaseX, stemBaseY, stemTipY, timeSinceStart);
+        this.drawHeadComponents(1, false, true, false, stemBaseX, stemBaseY, stemTipY, timeSinceStart, stemTipX);
+        this.drawHeadComponents(1, true, false, true, stemBaseX, stemBaseY, stemTipY, timeSinceStart, stemTipX);
         
-        this.drawHeadComponents(2, false, true, false, stemBaseX, stemBaseY, stemTipY, timeSinceStart);
-        this.drawHeadComponents(2, true, false, true, stemBaseX, stemBaseY, stemTipY, timeSinceStart);
+        this.drawHeadComponents(2, false, true, false, stemBaseX, stemBaseY, stemTipY, timeSinceStart, stemTipX);
+        this.drawHeadComponents(2, true, false, true, stemBaseX, stemBaseY, stemTipY, timeSinceStart, stemTipX);
 
         // --- LAYER 4: TOP (Particles) ---
         for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -679,13 +699,19 @@ class Flower {
         }
     }
 
-    drawMainStem(x, baseY, tipY, time) {
+    drawMainStem(baseX, baseY, tipX, tipY, time) {
         const progress = Math.min(1, time / 1000);
         const eased = easeOutCubic(progress);
-        const currentTipY = baseY - (baseY - tipY) * eased;
+        
+        // Quadratic curve for a more organic sway look
+        const midY = (baseY + tipY) / 2;
+        const cpX = baseX; 
+        const cpY = midY;
+
         ctx.beginPath();
-        ctx.moveTo(x, baseY);
-        ctx.lineTo(x, currentTipY);
+        ctx.moveTo(baseX, baseY);
+        ctx.quadraticCurveTo(cpX, cpY, tipX, tipY);
+        
         ctx.strokeStyle = CONFIG.stemColor;
         ctx.lineWidth = 6;
         ctx.lineCap = 'round';
@@ -729,6 +755,15 @@ function resize() {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     
+    const hubEl = document.getElementById('hub-wrapper');
+    if (hubEl) {
+        const hubRect = hubEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        hubY = (hubRect.top - containerRect.top) + (hubRect.height / 2);
+    } else {
+        hubY = height * 0.8; // Fallback
+    }
+
     const newBaseScale = Math.min(width, height) * 0.22;
 
     if (flower) {
@@ -746,6 +781,16 @@ async function handleUpdate(data) {
 
     if (status === 'queued') {
         flower.triggerOrb({ requestId, color: neonRed, profilePic, pageId, isDryRun });
+        
+        // AUTO-PROCESS simulation orbs after a delay if they are triggered via click
+        if (pageId.startsWith('simulated-page-')) {
+            setTimeout(() => {
+                handleUpdate({ requestId, status: 'processing', pageId });
+            }, 1200);
+            setTimeout(() => {
+                handleUpdate({ requestId, status: 'completed', pageId });
+            }, 4000);
+        }
     } else if (status === 'processing') {
         processingPages.add(pageId);
         coreHub.classList.add('active-core');
