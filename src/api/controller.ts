@@ -125,9 +125,9 @@ export class SocialMediaController {
       const result = await service.post(validated);
       res.status(result.success ? 200 : (result.error?.code === 'AUTH_VALIDATION_FAILED' ? 401 : 500)).json(result);
     } catch (error: any) {
-      if (error.name === 'ZodError') {
-        logger.error('Validation Error Caught in Controller', { errors: error.errors });
-        res.status(400).json({ success: false, error: 'Validation Error', details: error.errors || error.issues });
+      if (error.name === 'ZodError' || error instanceof z.ZodError) {
+        logger.error('Validation Error Caught in Controller', { issues: error.issues });
+        res.status(400).json({ success: false, error: 'Validation Error', details: error.issues });
       } else if (error.message.includes('Invalid Twitter Credentials')) {
         res.status(401).json({ success: false, error: error.message });
       } else {
@@ -168,9 +168,9 @@ export class SocialMediaController {
       
       res.status(result.success ? 200 : (result.error?.code === 'AUTH_VALIDATION_FAILED' ? 401 : 500)).json(result);
     } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        logger.error('Validation Error', { details: error.errors });
-        res.status(400).json({ success: false, error: 'Validation Error', details: error.errors });
+      if (error instanceof z.ZodError || error.name === 'ZodError') {
+        logger.error('Validation Error', { issues: error.issues });
+        res.status(400).json({ success: false, error: 'Validation Error', details: error.issues });
       } else {
         logger.error('Update Post Error', { error: error.message });
         res.status(500).json({ success: false, error: error.message });
