@@ -121,6 +121,10 @@ When using `multipart/form-data`, attach your image/video files to the `media` f
 *   **Video Limit**: 100MB per file.
 *   **Max Resolution**: 3000x3000px (Images).
 *   **Auto-Optimization**: USMM automatically strips metadata and applies high-quality compression to images to ensure optimal delivery and privacy.
+*   **Protocol Compliance (v24.0)**: 
+    *   **Photos**: Uploaded to `graph.facebook.com` and attached to feed via `media_fbid`.
+    *   **Videos**: Uploaded via dedicated `graph-video.facebook.com` infrastructure. Feed publication is handled directly on the video node to ensure full compatibility with Page permissions.
+    *   **Alt-Text**: Automatically generated if missing (`pageId_epoch_index`) to satisfy v24.0 mandatory story metadata requirements.
 
 ---
 
