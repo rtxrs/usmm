@@ -131,10 +131,23 @@ describe('USMM API Endpoints', () => {
               options: { dryRun: true }
             });
           expect(res.status).toBe(200);
-          expect(res.body.success).toBe(true);
-        });
-    
-        it('POST /v1/fb/post/:id/update should work for dryRun', async () => {
+                expect(res.body.success).toBe(true);
+              });
+          
+              it('POST /v1/slack/post should work WITHOUT x-platform-id header (auto-id)', async () => {
+                const res = await request(app)
+                  .post('/v1/slack/post')
+                  .set('x-platform-token', 'https://hooks.slack.com/services/MOCK/AUTO/ID')
+                  .send({
+                    caption: 'Auto-ID Slack test',
+                    options: { dryRun: true }
+                  });
+                expect(res.status).toBe(200);
+                expect(res.body.success).toBe(true);
+              });
+          
+              it('POST /v1/fb/post/:id/update should work for dryRun', async () => {
+          
           const res = await request(app)
             .post('/v1/fb/post/123/update')
             .set('x-platform-id', '12345')

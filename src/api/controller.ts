@@ -53,8 +53,13 @@ export class SocialMediaController {
   }
 
   private static getService(req: Request, platform: 'fb' | 'x' | 'slack', isDryRun: boolean): { service: any, error?: string } {
-    const pageId = (req.headers['x-platform-id'] || req.headers['x-fb-page-id'] || config.FB_PAGE_ID) as string;
+    let pageId = (req.headers['x-platform-id'] || req.headers['x-fb-page-id'] || config.FB_PAGE_ID) as string;
     const token = (req.headers['x-platform-token'] || req.headers['x-fb-token'] || config.FB_PAGE_ACCESS_TOKEN) as string;
+
+    // Fallback: If platform is slack, we can default the ID to 'slack' if not provided
+    if (!pageId && platform === 'slack') {
+      pageId = 'slack';
+    }
 
     if (!isDryRun && (!pageId || !token)) {
       return { service: null, error: 'Missing Credentials: Provide x-platform-id/x-platform-token headers.' };
