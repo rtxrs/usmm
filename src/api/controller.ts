@@ -56,9 +56,9 @@ export class SocialMediaController {
     let pageId = (req.headers['x-platform-id'] || req.headers['x-fb-page-id'] || config.FB_PAGE_ID) as string;
     const token = (req.headers['x-platform-token'] || req.headers['x-fb-token'] || config.FB_PAGE_ACCESS_TOKEN) as string;
 
-    // Fallback: If platform is slack, we can default the ID to 'slack' if not provided
-    if (!pageId && platform === 'slack') {
-      pageId = 'slack';
+    // Auto-ID: Default to platform name if ID is missing
+    if (!pageId) {
+      pageId = platform;
     }
 
     if (!isDryRun && (!pageId || !token)) {

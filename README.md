@@ -16,7 +16,7 @@ To target a specific social media account, include these headers in your request
 
 | Header | Description |
 | :--- | :--- |
-| `x-platform-id` | The unique ID of the target Page/Account (e.g. Facebook Page ID). *Optional for Slack specialized routes (defaults to 'slack').* |
+| `x-platform-id` | The unique ID of the target Page/Account (e.g. Facebook Page ID). *Optional for specialized routes (defaults to the platform name).* |
 | `x-platform-token` | The authentication secret. Format varies by platform (see below). |
 
 #### Authentication Schemas

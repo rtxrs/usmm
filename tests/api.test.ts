@@ -142,13 +142,40 @@ describe('USMM API Endpoints', () => {
                     caption: 'Auto-ID Slack test',
                     options: { dryRun: true }
                   });
-                expect(res.status).toBe(200);
-                expect(res.body.success).toBe(true);
-              });
-          
-              it('POST /v1/fb/post/:id/update should work for dryRun', async () => {
-          
-          const res = await request(app)
+                      expect(res.status).toBe(200);
+                      expect(res.body.success).toBe(true);
+                    });
+                
+                    it('POST /v1/x/post should work WITHOUT x-platform-id header (auto-id)', async () => {
+                      const mockCreds = JSON.stringify({
+                        appKey: 'mock', appSecret: 'mock', accessToken: 'mock', accessSecret: 'mock'
+                      });
+                      const res = await request(app)
+                        .post('/v1/x/post')
+                        .set('x-platform-token', Buffer.from(mockCreds).toString('base64'))
+                        .send({
+                          caption: 'Auto-ID X test',
+                          options: { dryRun: true }
+                        });
+                            expect(res.status).toBe(200);
+                            expect(res.body.success).toBe(true);
+                          });
+                      
+                          it('POST /v1/fb/post should work WITHOUT x-platform-id header (auto-id)', async () => {
+                            const res = await request(app)
+                              .post('/v1/fb/post')
+                              .set('x-platform-token', 'mock')
+                              .send({
+                                caption: 'Auto-ID FB test',
+                                options: { dryRun: true }
+                              });
+                            expect(res.status).toBe(200);
+                            expect(res.body.success).toBe(true);
+                          });
+                      
+                          it('POST /v1/fb/post/:id/update should work for dryRun', async () => {
+                      
+                          const res = await request(app)
             .post('/v1/fb/post/123/update')
             .set('x-platform-id', '12345')
             .set('x-platform-token', 'mock')
