@@ -23,8 +23,8 @@ To target a specific social media account, include these headers in your request
 USMM uses an **Adaptive Token Strategy** to support diverse platform requirements while remaining a stateless proxy. The content of the `x-platform-token` header is interpreted based on the `platform` parameter:
 
 1.  **Raw String (Simple Token)**
-    *   Best for: Facebook (`fb`), simple API keys.
-    *   **Value:** `EAAg...`
+    *   Best for: Facebook (`fb`), Slack Webhooks (`slack`), simple API keys.
+    *   **Value:** `EAAg...` (FB) or `https://hooks.slack.com/services/...` (Slack).
     
 2.  **JSON String (Multi-part Auth)**
     *   Best for: X/Twitter (`x`) using OAuth 1.0a.
@@ -46,12 +46,21 @@ USMM uses an **Adaptive Token Strategy** to support diverse platform requirement
 
 ### 2. API Endpoints
 
-#### `POST /v1/post`
-Create a new post on the specified platform(s). Supports JSON or `multipart/form-data`.
+USMM provides both a generic "Smart Router" endpoint and platform-specific specialized endpoints.
+
+#### Generic Endpoint: `POST /v1/post`
+Routes requests based on the `platform` field in the JSON body.
+
+#### Specialized Endpoints (Recommended)
+These endpoints automatically assume the platform based on the URL, allowing for cleaner payloads (the `platform` field can be omitted in the body).
+
+*   **Facebook**: `POST /v1/fb/post` | `POST /v1/fb/post/:id/update`
+*   **X (Twitter)**: `POST /v1/x/post` | `POST /v1/x/post/:id/update`
+*   **Slack**: `POST /v1/slack/post`
 
 **JSON Parameters:**
-*   `platform` (string, **required**): The target platform. Supported: `fb` (Facebook), `x` (Twitter).
-*   `caption` (string): The text content of the post. **Mandatory** for feed posts, but optional if `publishToFeed` is set to `false` (e.g., for Story-only posts). *Note: If both caption and media altText are missing, USMM automatically generates a fallback ID (pageId_timestamp) to satisfy platform metadata requirements.*
+*   `platform` (string, **required for generic endpoint**): The target platform. Supported: `fb`, `x`, `slack`.
+*   `caption` (string): The text content or Slack Block-Kit-HTML (see section 3).
 *   `media` (array, optional): List of media objects.
     *   `source` (string/buffer): URL or binary data of the image/video.
     *   `type` (string): Either `image` or `video`.
@@ -62,48 +71,16 @@ Create a new post on the specified platform(s). Supports JSON or `multipart/form
     *   `publishToStory` (boolean): Default `false` (FB only).
     *   `dryRun` (boolean): Default `false`. Performs a simulated post.
     *   `validateToken` (boolean): Default `false`. 
-        *   **Facebook**: Always performs real-time validation against the API (safe quota).
-        *   **X (Twitter)**: By default, only structural validation is performed to save the very limited Free/Basic tier read quota. Set to `true` to force a real API verification (`v1.1/verify_credentials`).
+    *   `slackUsername` (string, optional): Override the bot name on Slack (defaults to `USMM`).
+    *   `slackIconUrl` (string, optional): Override the bot icon via URL.
+    *   `slackIconEmoji` (string, optional): Override the bot icon via emoji (e.g. `:spider:`). Takes priority over `slackIconUrl`.
     *   `retryConfig` (object): (Optional) `{ maxRetries: number, backoffMs: number }`.
 
-**Example Request (Facebook):**
+**Example Request (Slack):**
 ```json
 {
-  "platform": "fb",
-  "caption": "Check out our latest announcement!",
-  "priority": 5,
-  "options": {
-    "publishToFeed": true,
-    "publishToStory": true
-  }
-}
-```
-
-**Example Request (X/Twitter):**
-```json
-{
-  "platform": "x",
-  "caption": "Breaking news from USMM! #automation",
-  "priority": 10
-}
-```
-
-#### `POST /v1/post/:id/update`
-Edit an existing post's caption. *Note: Only supported on Facebook currently.*
-
-**Parameters:**
-*   `id` (path): The platform-specific Post ID.
-*   `platform` (string, **required**): The target platform (e.g., `fb`).
-*   `caption` (string, required): The new text content.
-*   `priority` (number, optional): Processing priority.
-*   `dryRun` (boolean, optional): If true, simulates the update.
-
-**Example Request:**
-```json
-{
-  "platform": "fb",
-  "caption": "Update: The event has been rescheduled to 6 PM.",
-  "priority": 10
+  "caption": "<div class='header'>🚀 Deployment Success</div><div class='section'>Production was updated to <b>v2.4.0</b>.</div><hr /><a href='https://example.com' class='btn-primary'>View Logs</a>",
+  "priority": 5
 }
 ```
 
@@ -113,9 +90,41 @@ Retrieve global processing statistics, including queue lengths and success rates
 #### `GET /health`
 Basic service health check and uptime information.
 
+### 3. Slack "Utility-First" Formatting (USMM)
+USMM includes a built-in framework that converts a simplified HTML/Tailwind-like syntax into Slack **Block Kit** automatically.
+
+#### Structural Blocks
+| USMM Tag | Class / Attribute | Slack Block |
+| :--- | :--- | :--- |
+| `<div class="header">` | N/A | `header` (Bold title) |
+| `<div class="section">` | N/A | `section` (Standard text) |
+| `<div class="field">` | (Inside section) | `section.fields` (2-column grid) |
+| `<div class="context">` | N/A | `context` (Mixed text/images) |
+| `<ul>` / `<li>` | N/A | `rich_text` (Bulleted list) |
+| `<hr />` | N/A | `divider` |
+
+#### Interactive & Media
+| USMM Tag | Class / Attribute | Slack Block |
+| :--- | :--- | :--- |
+| `<a>` | `class="btn-primary"` | `button` (Blue) |
+| `<a>` | `class="btn-danger"` | `button` (Red) |
+| `<select>` | `placeholder="..."` | `static_select` |
+| `<select multiple>` | N/A | `multi_static_select` |
+| `<select class="overflow">`| N/A | `overflow` menu |
+| `<input type="date">` | `value="YYYY-MM-DD"` | `datepicker` |
+| `<input type="time">` | `value="HH:mm"` | `timepicker` |
+| `<img>` | `src="..." title="..."` | `image` (Block or Accessory) |
+
+#### Inline Markdown (Auto-converted)
+*   `<b>` / `<strong>` → `*bold*`
+*   `<i>` / `<em>` → `_italic_`
+*   `<code>` → `` `code` ``
+*   `<br />` → `\n` (newline)
+*   `<a href="...">` → `<url|link>`
+
 ---
 
-### 3. Media Processing
+### 4. Media Processing
 When using `multipart/form-data`, attach your image/video files to the `media` field.
 *   **Image Limit**: 10MB per file.
 *   **Video Limit**: 100MB per file.

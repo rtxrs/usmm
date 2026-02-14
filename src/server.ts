@@ -110,6 +110,17 @@ app.get('/logo/:platform/:id', async (req, res) => {
     } catch (e) {}
   }
 
+  if (platform === 'slack') {
+    try {
+      const response = await axios.get('https://cdn.brandfetch.io/slack.com/w/400/h/400', {
+        responseType: 'arraybuffer'
+      });
+      fs.writeFileSync(filePath, response.data);
+      res.set('Content-Type', 'image/png');
+      return res.send(response.data);
+    } catch (e) {}
+  }
+
   res.status(404).send('Logo not found');
 });
 
@@ -119,6 +130,17 @@ app.use('/v1', dryRunLimiter);
 
 app.post('/v1/post', upload.array('media'), SocialMediaController.createPost);
 app.post('/v1/post/:id/update', SocialMediaController.updatePost);
+
+// Platform-Specific Routes
+app.post('/v1/fb/post', upload.array('media'), SocialMediaController.createFacebookPost);
+app.post('/v1/fb/post/:id/update', SocialMediaController.updateFacebookPost);
+
+app.post('/v1/x/post', upload.array('media'), SocialMediaController.createTwitterPost);
+app.post('/v1/x/post/:id/update', SocialMediaController.updateTwitterPost);
+
+app.post('/v1/slack/post', upload.array('media'), SocialMediaController.createSlackPost);
+app.post('/v1/slack/post/:id/update', SocialMediaController.updateSlackPost);
+
 app.get('/v1/stats', SocialMediaController.getStats);
 
 // Error Handler for Multer

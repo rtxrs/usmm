@@ -1,5 +1,6 @@
 import { FacebookClient } from './FacebookClient.js';
 import { TwitterClient } from './TwitterClient.js';
+import { SlackClient } from './SlackClient.js';
 import { QueueManager } from './QueueManager.js';
 import { PostRequestSchema } from '../validation/schemas.js';
 import type { PostRequest } from '../validation/schemas.js';
@@ -14,20 +15,20 @@ import fs from 'fs';
 import axios from 'axios';
 
 export interface ServiceConfig {
-  platform: 'fb' | 'x';
+  platform: 'fb' | 'x' | 'slack';
   pageId: string;
   accessToken: string;
   concurrency?: number;
   publishRateLimit?: number;
 }
 
-type GenericClient = FacebookClient | TwitterClient;
+type GenericClient = FacebookClient | TwitterClient | SlackClient;
 
 export class SocialMediaService {
   private client: GenericClient | null = null;
   private queue: QueueManager;
   private pageId: string;
-  private platform: 'fb' | 'x';
+  private platform: 'fb' | 'x' | 'slack';
   private config: ServiceConfig;
 
   constructor(cfg: ServiceConfig) {
@@ -49,8 +50,10 @@ export class SocialMediaService {
     
     if (this.platform === 'fb') {
       this.client = new FacebookClient(this.config.pageId, this.config.accessToken);
-    } else {
+    } else if (this.platform === 'x') {
       this.client = new TwitterClient(this.config.accessToken);
+    } else {
+      this.client = new SlackClient(this.config.accessToken);
     }
     return this.client;
   }
@@ -162,7 +165,7 @@ export class SocialMediaService {
             id, 
             type: validated.media?.[idx]?.type || 'image' 
           }));
-          const res = await this.getClient().createFeedPost(processedCaption, mediaObjects);
+          const res = await this.getClient().createFeedPost(processedCaption, mediaObjects, validated.options);
           results.push(res);
           if (res.success) {
             logger.info('Post published successfully', { 

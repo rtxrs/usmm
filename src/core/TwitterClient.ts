@@ -94,7 +94,7 @@ export class TwitterClient {
     return { valid: true, name: isMock ? 'Mock X User' : 'X Account (Structural Check)' };
   }
 
-  async createFeedPost(caption: string, media?: { id: string, type: 'image' | 'video' }[]): Promise<FISResponse> {
+  async createFeedPost(caption: string, media?: { id: string, type: 'image' | 'video' }[], options?: any): Promise<FISResponse> {
     try {
       const tweetData: any = { text: caption };
       

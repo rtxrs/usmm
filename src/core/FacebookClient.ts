@@ -49,7 +49,7 @@ export class FacebookClient {
     return response.data.id;
   }
 
-  async createFeedPost(caption: string, media?: { id: string, type: 'image' | 'video' }[]): Promise<FISResponse> {
+  async createFeedPost(caption: string, media?: { id: string, type: 'image' | 'video' }[], options?: any): Promise<FISResponse> {
     try {
       const hasVideo = media?.some(m => m.type === 'video');
       const videoId = media?.find(m => m.type === 'video')?.id;

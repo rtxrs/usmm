@@ -87,7 +87,67 @@ describe('USMM API Endpoints', () => {
 
   it('GET /logo/:platform/:id should return 404 for non-existent logo if graph fails', async () => {
     const res = await request(app).get('/logo/fb/invalid_id_9999999');
-    expect(res.status).toBe(404);
-  });
-
-});
+        expect(res.status).toBe(404);
+      });
+    
+      describe('Specialized Platform Routes', () => {
+        
+        it('POST /v1/fb/post should work for dryRun without "platform" in body', async () => {
+          const res = await request(app)
+            .post('/v1/fb/post')
+            .set('x-platform-id', '12345')
+            .set('x-platform-token', 'mock')
+            .send({
+              caption: 'Specialized FB test',
+              options: { dryRun: true }
+            });
+          expect(res.status).toBe(200);
+          expect(res.body.success).toBe(true);
+        });
+    
+        it('POST /v1/x/post should work for dryRun without "platform" in body', async () => {
+          const mockCreds = JSON.stringify({
+            appKey: 'mock', appSecret: 'mock', accessToken: 'mock', accessSecret: 'mock'
+          });
+          const res = await request(app)
+            .post('/v1/x/post')
+            .set('x-platform-id', 'twitter_user')
+            .set('x-platform-token', Buffer.from(mockCreds).toString('base64'))
+            .send({
+              caption: 'Specialized X test',
+              options: { dryRun: true }
+            });
+          expect(res.status).toBe(200);
+          expect(res.body.success).toBe(true);
+        });
+    
+        it('POST /v1/slack/post should work for dryRun without "platform" in body', async () => {
+          const res = await request(app)
+            .post('/v1/slack/post')
+            .set('x-platform-id', 'slack-channel')
+            .set('x-platform-token', 'https://hooks.slack.com/services/MOCK/TOKEN')
+            .send({
+              caption: 'Specialized Slack test',
+              options: { dryRun: true }
+            });
+          expect(res.status).toBe(200);
+          expect(res.body.success).toBe(true);
+        });
+    
+        it('POST /v1/fb/post/:id/update should work for dryRun', async () => {
+          const res = await request(app)
+            .post('/v1/fb/post/123/update')
+            .set('x-platform-id', '12345')
+            .set('x-platform-token', 'mock')
+            .send({
+              caption: 'Updated FB caption',
+              dryRun: true
+            });
+          expect(res.status).toBe(200);
+          expect(res.body.success).toBe(true);
+        });
+    
+      });
+    
+    });
+    

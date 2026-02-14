@@ -52,7 +52,7 @@ export class SocialMediaController {
     }
   }
 
-  private static getService(req: Request, platform: 'fb' | 'x', isDryRun: boolean): { service: any, error?: string } {
+  private static getService(req: Request, platform: 'fb' | 'x' | 'slack', isDryRun: boolean): { service: any, error?: string } {
     const pageId = (req.headers['x-platform-id'] || req.headers['x-fb-page-id'] || config.FB_PAGE_ID) as string;
     const token = (req.headers['x-platform-token'] || req.headers['x-fb-token'] || config.FB_PAGE_ACCESS_TOKEN) as string;
 
@@ -64,10 +64,30 @@ export class SocialMediaController {
     return { service: SocialMediaRegistry.getInstance(platform, pageId || 'dry-run-user', token || 'none') };
   }
 
+  static async createFacebookPost(req: Request, res: Response): Promise<void> {
+    return SocialMediaController.processPost(req, res, 'fb');
+  }
+
+  static async createTwitterPost(req: Request, res: Response): Promise<void> {
+    return SocialMediaController.processPost(req, res, 'x');
+  }
+
+  static async createSlackPost(req: Request, res: Response): Promise<void> {
+    return SocialMediaController.processPost(req, res, 'slack');
+  }
+
   static async createPost(req: Request, res: Response): Promise<void> {
+    const platform = req.body.platform as 'fb' | 'x' | 'slack';
+    if (!platform) {
+      res.status(400).json({ success: false, error: 'Missing required parameter: platform' });
+      return;
+    }
+    return SocialMediaController.processPost(req, res, platform);
+  }
+
+  private static async processPost(req: Request, res: Response, platform: 'fb' | 'x' | 'slack'): Promise<void> {
     try {
       const rawBody = req.body;
-      const platform = rawBody.platform as 'fb' | 'x';
       
       // Extract dryRun early to allow credential skip
       let options = rawBody.options;
@@ -75,11 +95,6 @@ export class SocialMediaController {
         try { options = JSON.parse(options); } catch(e) {}
       }
       const isDryRun = config.DRY_RUN || options?.dryRun === true || options?.dryRun === 'true';
-
-      if (!platform) {
-        res.status(400).json({ success: false, error: 'Missing required parameter: platform' });
-        return;
-      }
 
       const { service, error } = SocialMediaController.getService(req, platform, isDryRun);
       if (error) {
@@ -96,7 +111,7 @@ export class SocialMediaController {
         }
       }
       
-      let payload: any = { ...rawBody };
+      let payload: any = { ...rawBody, platform }; // Ensure platform is set from route/param
       if (typeof rawBody.data === 'string') {
         try {
           const parsed = JSON.parse(rawBody.data);
@@ -146,23 +161,39 @@ export class SocialMediaController {
       } else if (error.message.includes('Invalid Twitter Credentials')) {
         res.status(401).json({ success: false, error: error.message });
       } else {
-        logger.error('API Error', { error: error.message });
+        logger.error('API Error', { error: error.message, stack: error.stack });
         res.status(500).json({ success: false, error: error.message });
       }
     }
   }
 
+  static async updateFacebookPost(req: Request, res: Response): Promise<void> {
+    return SocialMediaController.processUpdate(req, res, 'fb');
+  }
+
+  static async updateTwitterPost(req: Request, res: Response): Promise<void> {
+    return SocialMediaController.processUpdate(req, res, 'x');
+  }
+
+  static async updateSlackPost(req: Request, res: Response): Promise<void> {
+    return SocialMediaController.processUpdate(req, res, 'slack');
+  }
+
   static async updatePost(req: Request, res: Response): Promise<void> {
+    const { platform } = req.body;
+    if (!platform) {
+      res.status(400).json({ success: false, error: 'Missing required parameter: platform' });
+      return;
+    }
+    return SocialMediaController.processUpdate(req, res, platform as any);
+  }
+
+  private static async processUpdate(req: Request, res: Response, platform: 'fb' | 'x' | 'slack'): Promise<void> {
     try {
-      const { platform, caption, priority, dryRun } = req.body;
+      const { caption, priority, dryRun } = req.body;
       const isDryRun = config.DRY_RUN || dryRun === true || dryRun === 'true';
 
-      if (!platform) {
-        res.status(400).json({ success: false, error: 'Missing required parameter: platform' });
-        return;
-      }
-
-      const { service, error } = SocialMediaController.getService(req, platform as 'fb' | 'x', isDryRun);
+      const { service, error } = SocialMediaController.getService(req, platform, isDryRun);
       if (error) {
         res.status(401).json({ success: false, error });
         return;

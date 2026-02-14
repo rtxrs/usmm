@@ -7,7 +7,7 @@ export class SocialMediaRegistry {
   private static instances: Map<string, SocialMediaService> = new Map();
   private static db = Database.getInstance();
 
-  static getInstance(platform: 'fb' | 'x', pageId: string, accessToken: string): SocialMediaService {
+  static getInstance(platform: 'fb' | 'x' | 'slack', pageId: string, accessToken: string): SocialMediaService {
     const key = `${platform}:${pageId}:${accessToken}`;
     
     if (!this.instances.has(key)) {
