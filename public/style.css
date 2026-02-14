@@ -11,16 +11,27 @@
 body {
   margin: 0;
   background-color: #050202;
-  background-image: url('images/USMM-bg.png');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
   font-family: 'Tilt Neon', sans-serif;
   color: #f8fafc;
   overflow: hidden; /* Prevent scrolling */
   height: 100vh;
   width: 100vw;
   position: fixed; /* Extra protection against viewport shifts */
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('images/USMM-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  opacity: 0.1;
+  z-index: -1;
 }
 
 .cyber-container {
@@ -45,7 +56,7 @@ body {
 .hub-wrapper {
   position: absolute;
   left: 50%;
-  top: 80%; /* Moved lower */
+  top: 65%; /* Moved higher to be near the branching point */
   transform: translate(-50%, -50%);
   z-index: 30;
   display: flex;

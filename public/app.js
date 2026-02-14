@@ -295,11 +295,11 @@ class SpiritOrb {
         this.pulseOffset = Math.random() * 10000;
         this.pulseSpeed = isDryRun ? 0.001 : (0.003 + Math.random() * 0.008);
 
-        this.waitDuration = 200; 
-        this.stemDuration = 1000;
-        this.coreDuration = 500; // Time to dwell at core visually if processing is fast
-        this.pedicelDuration = 600; 
-        this.pistilDuration = 1500;
+        this.waitDuration = 100; // Shorter initial wait
+        this.stemDuration = 800; // Faster stem travel
+        this.coreDuration = 300; 
+        this.pedicelDuration = 500; 
+        this.pistilDuration = 1200;
         this.floatPhase = Math.random() * Math.PI * 2;
 
         if (profilePic) {
@@ -786,10 +786,10 @@ async function handleUpdate(data) {
         if (pageId.startsWith('simulated-page-')) {
             setTimeout(() => {
                 handleUpdate({ requestId, status: 'processing', pageId });
-            }, 1200);
+            }, 400); // Trigger processing much faster
             setTimeout(() => {
                 handleUpdate({ requestId, status: 'completed', pageId });
-            }, 4000);
+            }, 1800); // Complete faster
         }
     } else if (status === 'processing') {
         processingPages.add(pageId);
