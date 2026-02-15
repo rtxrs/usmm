@@ -1,4 +1,5 @@
 import { TwitterApi } from 'twitter-api-v2';
+import axios from 'axios';
 import type { FISResponse, MediaAsset } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -57,7 +58,7 @@ export class TwitterClient {
         mediaId = await this.api.v1.uploadMedia(asset.source, { mimeType });
       } else {
         // Fetch URL source to Buffer first since twitter-api-v2 v1.1 upload needs it
-        const response = await axios.get(asset.source, { responseType: 'arraybuffer' });
+        const response = await axios.get(asset.source as string, { responseType: 'arraybuffer' });
         const buffer = Buffer.from(response.data);
         mediaId = await this.api.v1.uploadMedia(buffer, { mimeType });
       }
