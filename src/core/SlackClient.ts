@@ -55,7 +55,7 @@ export class SlackClient {
         payload.icon_url = options?.slackIconUrl || 'https://usmm.global-desk.top/images/USMM-logo-full-transparent.png';
       }
 
-      const response = await axios.post(this.webhookUrl, payload);
+      const response = await axios.post(this.webhookUrl, payload, { proxy: false });
 
       return {
         success: true,

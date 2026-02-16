@@ -62,7 +62,7 @@ The `PostRequestSchema` has been updated to accept `platform: 'fb' | 'x'`.
 - [ ] Implement LinkedIn integration
 
 ### Reliability & UX
-- [ ] Implement persistent queue storage (Redis or SQLite)
+- [x] Implement persistent queue storage (Redis)
 - [ ] Add a dashboard tab for managing platform credentials
 - [ ] Support scheduled posts with a calendar view
 - [ ] Add more robust error recovery for partial batch failures

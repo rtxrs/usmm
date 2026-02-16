@@ -25,16 +25,9 @@ export class SocialMediaRegistry {
 
       // Persist account if not dry-run anonymous
       if (pageId !== 'dry-run-user' && pageId !== 'anonymous' && accessToken !== 'none') {
-        try {
-          const stmt = this.db.prepare(`
-            INSERT INTO accounts (platform, platform_id, access_token)
-            VALUES (?, ?, ?)
-            ON CONFLICT(platform, platform_id) DO UPDATE SET access_token = EXCLUDED.access_token
-          `);
-          stmt.run(platform, pageId, accessToken);
-        } catch (e: any) {
-          logger.warn('Failed to persist account to DB', { error: e.message });
-        }
+        this.db.saveAccount(platform, pageId, accessToken, {}).catch(e => {
+          logger.warn('Failed to persist account to Redis', { error: e.message });
+        });
       }
     }
     
@@ -44,12 +37,17 @@ export class SocialMediaRegistry {
   /**
    * Returns stats for all active instances.
    */
-  static getGlobalStats() {
+  static async getGlobalStats() {
+    const instanceStats = await Promise.all(
+      Array.from(this.instances.entries()).map(async ([id, service]) => {
+        const stats = await service.stats;
+        return [id, stats];
+      })
+    );
+
     return {
       dryRun: config.DRY_RUN,
-      instances: Object.fromEntries(
-        Array.from(this.instances.entries()).map(([id, service]) => [id, service.stats])
-      )
+      instances: Object.fromEntries(instanceStats)
     };
   }
 }

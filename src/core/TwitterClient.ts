@@ -58,7 +58,7 @@ export class TwitterClient {
         mediaId = await this.api.v1.uploadMedia(asset.source, { mimeType });
       } else {
         // Fetch URL source to Buffer first since twitter-api-v2 v1.1 upload needs it
-        const response = await axios.get(asset.source as string, { responseType: 'arraybuffer' });
+        const response = await axios.get(asset.source as string, { responseType: 'arraybuffer', proxy: false });
         const buffer = Buffer.from(response.data);
         mediaId = await this.api.v1.uploadMedia(buffer, { mimeType });
       }

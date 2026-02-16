@@ -254,7 +254,8 @@ export class SocialMediaController {
     }
   }
 
-  static getStats(req: Request, res: Response): void {
-    res.json(SocialMediaRegistry.getGlobalStats());
+  static async getStats(req: Request, res: Response): Promise<void> {
+    const stats = await SocialMediaRegistry.getGlobalStats();
+    res.json(stats);
   }
 }

@@ -102,7 +102,8 @@ app.get('/logo/:platform/:id', async (req, res) => {
   if (platform === 'fb') {
     try {
       const response = await axios.get(`https://graph.facebook.com/${id}/picture?type=large`, {
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        proxy: false
       });
       fs.writeFileSync(filePath, response.data);
       res.set('Content-Type', 'image/jpeg');
@@ -113,7 +114,8 @@ app.get('/logo/:platform/:id', async (req, res) => {
   if (platform === 'slack') {
     try {
       const response = await axios.get('https://cdn.brandfetch.io/slack.com/w/400/h/400', {
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        proxy: false
       });
       fs.writeFileSync(filePath, response.data);
       res.set('Content-Type', 'image/png');

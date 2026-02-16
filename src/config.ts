@@ -1,7 +1,14 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import { z } from 'zod';
 
-dotenv.config();
+// Load .env.local if it exists, otherwise fallback to .env
+if (fs.existsSync(path.join(process.cwd(), '.env.local'))) {
+  dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+} else {
+  dotenv.config();
+}
 
 const EnvSchema = z.object({
   PORT: z.string().default('3005'),
@@ -12,6 +19,10 @@ const EnvSchema = z.object({
   PUBLISH_RATE_LIMIT: z.string().default('10').transform(Number),
   DRY_RUN: z.string().default('false').transform((v) => v === 'true'),
   API_KEY: z.string().optional(), // Optional simple auth
+  REDIS_URL: z.string().optional(),
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z.string().default('6379').transform(Number),
+  REDIS_PASSWORD: z.string().optional(),
 });
 
 const processEnv = EnvSchema.safeParse(process.env);

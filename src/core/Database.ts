@@ -1,62 +1,90 @@
-import DatabaseConstructor from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import Redis from 'ioredis';
+import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 
 export class Database {
-  private static instance: any;
-  private db: any;
+  private static instance: Database;
+  private redis: Redis;
 
   private constructor() {
-    const dbPath = path.join(process.cwd(), 'usmm.db');
-    this.db = new DatabaseConstructor(dbPath, { timeout: 5000 });
-    this.db.pragma('journal_mode = WAL');
-    this.init();
+    const options: any = {
+      host: config.REDIS_HOST,
+      port: config.REDIS_PORT,
+      password: config.REDIS_PASSWORD,
+      retryStrategy: (times: number) => Math.min(times * 50, 2000),
+    };
+
+    if (config.REDIS_URL) {
+      this.redis = new Redis(config.REDIS_URL, options);
+    } else {
+      this.redis = new Redis(options);
+    }
+
+    this.redis.on('connect', () => logger.info('Connected to Redis'));
+    this.redis.on('error', (err) => logger.error('Redis connection error', { error: err.message }));
   }
 
-  public static getInstance(): any {
+  public static getInstance(): Database {
     if (!Database.instance) {
       Database.instance = new Database();
     }
-    return Database.instance.db;
+    return Database.instance;
   }
 
-  private init() {
-    // Accounts table for persistence of credentials and platform IDs
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS accounts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        platform TEXT NOT NULL,
-        platform_id TEXT NOT NULL,
-        access_token TEXT NOT NULL,
-        metadata TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(platform, platform_id)
-      );
-    `);
+  public get client(): Redis {
+    return this.redis;
+  }
 
-    // Tasks table for queue persistence
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id TEXT PRIMARY KEY,
-        platform TEXT NOT NULL,
-        page_id TEXT NOT NULL,
-        payload TEXT NOT NULL,
-        priority INTEGER DEFAULT 0,
-        status TEXT DEFAULT 'pending',
-        attempts INTEGER DEFAULT 0,
-        error_log TEXT,
-        scheduled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+  // Account management
+  async saveAccount(platform: string, platformId: string, accessToken: string, metadata: any) {
+    const key = `usmm:account:${platform}:${platformId}`;
+    await this.redis.hset(key, {
+      platform,
+      platform_id: platformId,
+      access_token: accessToken,
+      metadata: JSON.stringify(metadata),
+      updated_at: new Date().toISOString()
+    });
+  }
 
-    // Index for queue performance
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_tasks_status_priority_scheduled ON tasks(status, priority, scheduled_at);
-    `);
+  async getAccount(platform: string, platformId: string) {
+    const key = `usmm:account:${platform}:${platformId}`;
+    return await this.redis.hgetall(key);
+  }
 
-    logger.info('Database initialized and migrated');
+  // Task management
+  async saveTask(task: any) {
+    const taskKey = `usmm:task:${task.id}`;
+    await this.redis.hset(taskKey, {
+      ...task,
+      payload: JSON.stringify(task.payload),
+      created_at: task.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+    // Add to a global task index (set) for easier retrieval/stats
+    await this.redis.sadd('usmm:tasks_index', task.id);
+  }
+
+  async updateTaskStatus(id: string, status: string, errorLog?: string) {
+    const taskKey = `usmm:task:${id}`;
+    await this.redis.hset(taskKey, {
+      status,
+      error_log: errorLog || '',
+      updated_at: new Date().toISOString()
+    });
+  }
+
+  async getTaskStats() {
+    const taskIds = await this.redis.smembers('usmm:tasks_index');
+    const stats: Record<string, number> = {};
+    
+    for (const id of taskIds) {
+      const status = await this.redis.hget(`usmm:task:${id}`, 'status');
+      if (status) {
+        stats[status] = (stats[status] || 0) + 1;
+      }
+    }
+    
+    return stats;
   }
 }

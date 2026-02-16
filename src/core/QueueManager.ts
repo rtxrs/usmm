@@ -27,20 +27,18 @@ export class QueueManager {
     payload: any,
     priority: number
   ) {
-    const stmt = this.db.prepare(`
-      INSERT INTO tasks (id, platform, page_id, payload, priority, status)
-      VALUES (?, ?, ?, ?, ?, 'pending')
-    `);
-    stmt.run(id, platform, pageId, JSON.stringify(payload), priority);
+    await this.db.saveTask({
+      id,
+      platform,
+      page_id: pageId,
+      payload,
+      priority,
+      status: 'pending'
+    });
   }
 
   async updateTaskStatus(id: string, status: string, error?: string) {
-    const stmt = this.db.prepare(`
-      UPDATE tasks 
-      SET status = ?, error_log = ?, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ?
-    `);
-    stmt.run(status, error || null, id);
+    await this.db.updateTaskStatus(id, status, error);
   }
 
   async add<T>(
@@ -74,10 +72,10 @@ export class QueueManager {
     }
   }
 
-  get stats() {
-    const counts = this.db.prepare('SELECT status, COUNT(*) as count FROM tasks GROUP BY status').all();
+  async getStats() {
+    const dbStats = await this.db.getTaskStats();
     return {
-      db: counts.reduce((acc: any, row: any) => ({ ...acc, [row.status]: row.count }), {}),
+      db: dbStats,
       queues: {
         general: {
           size: QueueManager.globalGeneralQueue.size,
@@ -86,6 +84,20 @@ export class QueueManager {
         publish: {
           size: this.publishQueue.size,
           pending: this.publishQueue.pending,
+        }
+      }
+    };
+  }
+
+  // Legacy getter for compatibility if needed during transition, 
+  // but it's better to use getStats()
+  get stats() {
+    return {
+      error: "Use async getStats() instead",
+      queues: {
+        general: {
+          size: QueueManager.globalGeneralQueue.size,
+          pending: QueueManager.globalGeneralQueue.pending,
         }
       }
     };
