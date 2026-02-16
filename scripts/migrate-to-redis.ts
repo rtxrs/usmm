@@ -1,5 +1,5 @@
 import DatabaseConstructor from 'better-sqlite3';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';

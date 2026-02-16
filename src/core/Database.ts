@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 
@@ -21,7 +21,7 @@ export class Database {
     }
 
     this.redis.on('connect', () => logger.info('Connected to Redis'));
-    this.redis.on('error', (err) => logger.error('Redis connection error', { error: err.message }));
+    this.redis.on('error', (err: Error) => logger.error('Redis connection error', { error: err.message }));
   }
 
   public static getInstance(): Database {
