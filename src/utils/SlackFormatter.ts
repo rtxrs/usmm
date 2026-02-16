@@ -54,13 +54,13 @@ export class SlackFormatter {
       if (isButton) {
         flushMrkdwn();
         const style = className.includes('danger') ? 'danger' : (className.includes('primary') ? 'primary' : undefined);
-        currentActions.push(this.createButton(this.toMarkdown(content).trim(), attrs.href || '#', style, attrs.value));
+        currentActions.push(this.createButton(blocks, this.toMarkdown(content).trim(), attrs.href || '#', style, attrs.value));
       } else if (isBlock) {
         flushAll();
         const trimmedContent = content.trim();
         if (tag === 'div') {
           if (className === 'section') blocks.push(this.parseComplexSection(trimmedContent));
-          else if (className === 'header') blocks.push(this.createHeader(trimmedContent));
+          else if (className === 'header') this.createHeader(blocks, trimmedContent);
           else if (className === 'context') blocks.push(this.parseContext(trimmedContent));
           else if (className === 'divider') blocks.push({ type: 'divider' });
           else this.pushSmartSections(blocks, this.toMarkdown(trimmedContent));
@@ -203,19 +203,44 @@ export class SlackFormatter {
       .replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, '_$1_').replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
   }
 
-  private static createHeader(text: string) { return { type: 'header', text: { type: 'plain_text', text: text.substring(0, 3000), emoji: true } }; }
+  private static createHeader(blocks: any[], text: string) { 
+    if (text.length <= 3000) {
+      blocks.push({ type: 'header', text: { type: 'plain_text', text: text, emoji: true } });
+      return;
+    }
+
+    // Header exceeds limit: Take first 3000 as header, rest as section
+    blocks.push({ type: 'header', text: { type: 'plain_text', text: text.substring(0, 3000), emoji: true } });
+    this.pushSmartSections(blocks, this.toMarkdown(text.substring(3000)));
+  }
   private static createSection(markdown: string) { return { type: 'section', text: { type: 'mrkdwn', text: markdown } }; }
   private static createImage(url: string, title?: string, alt?: string) {
     const img: any = { type: 'image', image_url: url, alt_text: (alt || title || 'image').substring(0, 2000) };
     if (title) img.title = { type: 'plain_text', text: title.substring(0, 2000) };
     return img;
   }
-  private static createButton(content: string, url: string, style?: string, value?: string) {
+  private static createButton(blocks: any[], content: string, url: string, style?: string, value?: string) {
     let cleanText = content; let confirm: any = null;
     const confirmMatch = /<confirm\s*([^>]*?)>([\s\S]*?)<\/confirm>/i.exec(content);
     if (confirmMatch) {
       const cAttrs = this.parseAttributes(confirmMatch[1]);
-      confirm = { title: { type: 'plain_text', text: (cAttrs.title || 'Are you sure?').substring(0, 100) }, text: { type: 'plain_text', text: confirmMatch[2].trim().substring(0, 300) }, confirm: { type: 'plain_text', text: (cAttrs.confirm || 'Yes').substring(0, 30) }, deny: { type: 'plain_text', text: (cAttrs.deny || 'No').substring(0, 30) } };
+      const fullConfirmText = confirmMatch[2].trim();
+      
+      confirm = { 
+        title: { type: 'plain_text', text: (cAttrs.title || 'Are you sure?').substring(0, 100) }, 
+        text: { type: 'plain_text', text: fullConfirmText.substring(0, 300) }, 
+        confirm: { type: 'plain_text', text: (cAttrs.confirm || 'Yes').substring(0, 30) }, 
+        deny: { type: 'plain_text', text: (cAttrs.deny || 'No').substring(0, 30) } 
+      };
+
+      // If confirmation text was truncated, add an auxiliary context block before the action
+      if (fullConfirmText.length > 300) {
+        blocks.push({
+          type: 'context',
+          elements: [{ type: 'mrkdwn', text: `*Confirmation Detail:* ${this.toMarkdown(fullConfirmText)}` }]
+        });
+      }
+
       cleanText = content.replace(confirmMatch[0], '').trim();
     }
     const btn: any = { type: 'button', text: { type: 'plain_text', text: this.toMarkdown(cleanText).replace(/\*/g, '').substring(0, 75), emoji: true } };

@@ -76,11 +76,11 @@ export class SocialMediaService {
     }
   }
 
-  async post(request: PostRequest): Promise<FISResponse> {
+  async post(request: PostRequest, existingRequestId?: string): Promise<FISResponse> {
     const validated = request;
     const isDryRun = config.DRY_RUN || validated.options?.dryRun;
     const processedCaption = validated.caption ? this.ensureRobustCaption(validated.caption) : '';
-    const requestId = `req_${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = existingRequestId || `req_${Math.random().toString(36).substr(2, 9)}`;
 
     StreamManager.emitQueueUpdate(this.platform, this.pageId, 'queued', { 
       priority: validated.priority,
@@ -222,9 +222,9 @@ export class SocialMediaService {
     }, validated.priority, true, isDryRun, requestId);
   }
 
-  async updatePost(postId: string, newCaption: string, priority: WorkloadPriority = WorkloadPriority.HIGH, dryRun: boolean = false): Promise<FISResponse> {
+  async updatePost(postId: string, newCaption: string, priority: WorkloadPriority = WorkloadPriority.HIGH, dryRun: boolean = false, existingRequestId?: string): Promise<FISResponse> {
     const isDryRun = config.DRY_RUN || dryRun;
-    const requestId = `upd_${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = existingRequestId || `upd_${Math.random().toString(36).substr(2, 9)}`;
     logger.info('Queuing authoritative update', { requestId, postId, dryRun: isDryRun });
     StreamManager.emitQueueUpdate(this.platform, this.pageId, 'queued', { type: 'update', postId, isDryRun, requestId });
     
@@ -271,6 +271,22 @@ export class SocialMediaService {
 
   async validateToken(forceRealCheck: boolean = false) {
     return await this.getClient().validateToken(forceRealCheck);
+  }
+
+  async recoverTasks(pendingTasks: any[]) {
+    const myTasks = pendingTasks.filter(t => t.platform === this.platform && t.page_id === this.pageId);
+    if (myTasks.length === 0) return;
+
+    logger.info(`Recovering ${myTasks.length} tasks for ${this.platform}:${this.pageId}`);
+
+    for (const task of myTasks) {
+      // Re-queue the task using its original ID to prevent duplication in Redis
+      if (task.payload.action === 'update') {
+         this.updatePost(task.payload.postId, task.payload.newCaption, Number(task.priority), task.is_dry_run, task.id);
+      } else {
+         this.post(task.payload, task.id);
+      }
+    }
   }
 
   get stats() {

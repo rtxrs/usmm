@@ -9,6 +9,7 @@ import { config } from './config.js';
 import { SocialMediaController } from './api/controller.js';
 import { logger } from './utils/logger.js';
 import { StreamManager } from './core/StreamManager.js';
+import { SocialMediaRegistry } from './core/SocialMediaRegistry.js';
 import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
@@ -162,6 +163,11 @@ if (process.env.NODE_ENV !== 'test') {
       pageId: config.FB_PAGE_ID,
       concurrency: config.CONCURRENCY,
       nodeEnv: process.env.NODE_ENV
+    });
+
+    // Recover pending tasks from Redis
+    SocialMediaRegistry.recoverAllPendingTasks().catch(err => {
+      logger.error('Failed to trigger task recovery', { error: err.message });
     });
   });
 }

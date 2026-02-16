@@ -6,12 +6,10 @@ import { Database } from './Database.js';
 export class QueueManager {
   private static globalGeneralQueue = new PQueue({ concurrency: config.GLOBAL_CONCURRENCY || 100 });
   
-  private queue: PQueue;
   private publishQueue: PQueue;
   private db = Database.getInstance();
 
   constructor(concurrency: number = 3, publishRateLimit: number = 10) {
-    this.queue = new PQueue({ concurrency });
     this.publishQueue = new PQueue({
       concurrency: 1, 
       intervalCap: publishRateLimit,

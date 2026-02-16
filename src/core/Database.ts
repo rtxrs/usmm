@@ -89,6 +89,31 @@ export class Database {
     await this.redis.srem('usmm:tasks_index', id);
   }
 
+  async getPendingTasks() {
+    const taskIds = await this.redis.smembers('usmm:tasks_index');
+    const pendingTasks: any[] = [];
+    
+    for (const id of taskIds) {
+      const task = await this.redis.hgetall(`usmm:task:${id}`);
+      if (task && task.status === 'pending') {
+        try {
+          const processedTask = {
+            ...task,
+            payload: JSON.parse(task.payload),
+            is_dry_run: task.is_dry_run === 'true'
+          };
+          pendingTasks.push(processedTask);
+        } catch (e: any) {
+          logger.error(`Failed to parse task payload for ${id}`, { error: e.message });
+        }
+      } else if (!task) {
+        await this.redis.srem('usmm:tasks_index', id);
+      }
+    }
+    
+    return pendingTasks;
+  }
+
   async getTaskStats() {
     const taskIds = await this.redis.smembers('usmm:tasks_index');
     const stats: Record<string, number> = {};

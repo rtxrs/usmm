@@ -4,10 +4,15 @@ USMM (Unified Social Media Manager) is a high-reliability gateway for multi-plat
 
 ## 🛠 Features
 - **Multi-Platform Support**: Unified API for Facebook, X (Twitter), and Slack.
-- **Redis Persistence**: All accounts and tasks are persisted in Redis for reliability.
+- **Redis Persistence & Recovery**: All accounts and tasks are persisted in Redis. A built-in recovery system reloads pending tasks on server startup.
 - **Priority Queueing**: Tasks are processed based on priority levels (Critical, High, Normal).
-- **Media Optimization**: Automatic stripping of metadata, high-quality compression, and downscaling for high-res images.
-- **Smart Formatting**: Auto-conversion of HTML/Tailwind-like tags to Slack Block Kit.
+- **Media Optimization & Parity**: 
+    - Automatic stripping of metadata and high-quality compression.
+    - Auto-downscaling to 2048px for images.
+    - **Chunked Video Uploads**: Implements 4MB segmented uploads for Facebook (Start/Append/Finish phases) and native chunked support for X to handle large assets reliably.
+- **Slack Smart Formatting**: 
+    - Auto-conversion of HTML/Tailwind-like tags to Slack Block Kit.
+    - **Overflow Protection**: Headers > 3000 chars are automatically split into sections. Confirmation text > 300 chars is moved to an auxiliary context block to prevent API rejection while preserving context.
 
 ## 🚀 Setup & Installation
 
@@ -34,17 +39,25 @@ FB_PAGE_ID=
 FB_PAGE_ACCESS_TOKEN=
 ```
 
-### 4. Database Migration
-If you are upgrading from an older version using SQLite:
+### 4. Running the Service
+
+#### Development
 ```bash
-pnpm run migrate
+pnpm dev    # Development mode with watch (tsx)
 ```
 
-### 5. Running the Service
+#### Production (Self-Hosted)
+For production environments, ensure Redis is running and use the following:
 ```bash
-pnpm dev    # Development mode (watch)
-pnpm start  # Production mode
+pnpm start  # Standard production start (tsx)
 ```
+
+If using **PM2** on your production server:
+```bash
+pm2 start ecosystem.config.cjs
+```
+*(Note: PM2 is not required for local development and has been removed from local devDependencies.)*
+
 
 ## 📊 Priority Levels
 - `CRITICAL (10)`: Immediate priority for urgent announcements.

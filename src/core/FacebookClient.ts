@@ -18,35 +18,101 @@ export class FacebookClient {
 
   async uploadMedia(asset: MediaAsset): Promise<string> {
     const isVideo = asset.type === 'video';
-    // Videos use a dedicated subdomain and we use v24.0 for everything
-    const baseUrl = isVideo ? 'https://graph-video.facebook.com/v24.0' : 'https://graph.facebook.com/v24.0';
-    const endpoint = `${baseUrl}/${this.pageId}/${isVideo ? 'videos' : 'photos'}`;
-    const textParam = isVideo ? 'description' : 'caption';
+    let buffer: Buffer;
+
+    if (asset.source instanceof Buffer) {
+      buffer = asset.source;
+    } else {
+      const response = await axios.get(asset.source as string, { responseType: 'arraybuffer', proxy: false });
+      buffer = Buffer.from(response.data);
+    }
+
+    if (isVideo) {
+      return this.uploadVideoChunked(buffer, asset.mimeType);
+    }
+
+    // Standard Photo Upload (Single POST)
+    const baseUrl = 'https://graph.facebook.com/v24.0';
+    const endpoint = `${baseUrl}/${this.pageId}/photos`;
     const accessToken = (this.api.defaults.params as any)?.access_token;
     
     const form = new FormData();
-    
-    // access_token MUST be in the form body for graph-video uploads
     if (accessToken) form.append('access_token', accessToken);
-
-    if (asset.source instanceof Buffer) {
-      const filename = isVideo ? 'upload.mp4' : 'upload.png';
-      form.append('source', asset.source, { filename });
-    } else {
-      form.append(isVideo ? 'file_url' : 'url', asset.source);
-    }
-
+    form.append('source', buffer, { filename: 'upload.png' });
     form.append('published', 'false');
-    if (asset.altText) form.append(textParam, asset.altText);
+    if (asset.altText) form.append('caption', asset.altText);
 
     const response = await axios.post(endpoint, form, {
       headers: form.getHeaders(),
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity,
       proxy: false
     });
 
     return response.data.id;
+  }
+
+  /**
+   * Performs a resumable (chunked) upload for large videos to Facebook.
+   * Recommended for files > 25MB or high-reliability requirements.
+   */
+  private async uploadVideoChunked(buffer: Buffer, mimeType: string = 'video/mp4'): Promise<string> {
+    const accessToken = (this.api.defaults.params as any)?.access_token;
+    const baseUrl = 'https://graph-video.facebook.com/v24.0';
+    const endpoint = `${baseUrl}/${this.pageId}/videos`;
+    const fileSize = buffer.length;
+    const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunks
+
+    logger.debug('Starting chunked video upload to FB', { fileSize, chunks: Math.ceil(fileSize / CHUNK_SIZE) });
+
+    // Phase 1: START
+    const startRes = await axios.post(endpoint, null, {
+      params: {
+        access_token: accessToken,
+        upload_phase: 'start',
+        file_size: fileSize
+      },
+      proxy: false
+    });
+
+    const uploadSessionId = startRes.data.upload_session_id;
+    let startOffset = 0;
+
+    // Phase 2: APPEND
+    while (startOffset < fileSize) {
+      const endOffset = Math.min(startOffset + CHUNK_SIZE, fileSize);
+      const chunk = buffer.slice(startOffset, endOffset);
+
+      const form = new FormData();
+      form.append('access_token', accessToken);
+      form.append('upload_phase', 'transfer');
+      form.append('upload_session_id', uploadSessionId);
+      form.append('start_offset', startOffset.toString());
+      form.append('video_file_chunk', chunk, { filename: 'chunk.mp4', contentType: mimeType });
+
+      await axios.post(endpoint, form, {
+        headers: form.getHeaders(),
+        proxy: false
+      });
+
+      startOffset = endOffset;
+      logger.debug('Uploaded FB video chunk', { startOffset, total: fileSize });
+    }
+
+    // Phase 3: FINISH
+    const finishRes = await axios.post(endpoint, null, {
+      params: {
+        access_token: accessToken,
+        upload_phase: 'finish',
+        upload_session_id: uploadSessionId
+      },
+      proxy: false
+    });
+
+    const videoId = finishRes.data.id || finishRes.data.video_id;
+
+    // Wait for processing to begin (basic polling can be added if needed)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    return videoId;
   }
 
   async createFeedPost(caption: string, media?: { id: string, type: 'image' | 'video' }[], options?: any): Promise<FISResponse> {

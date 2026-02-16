@@ -55,12 +55,20 @@ export class TwitterClient {
       const mimeType = asset.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg');
       
       if (asset.source instanceof Buffer) {
-        mediaId = await this.api.v1.uploadMedia(asset.source, { mimeType });
+        mediaId = await this.api.v1.uploadMedia(asset.source, { 
+          mimeType, 
+          type: isVideo ? 'video/mp4' : undefined,
+          chunked: isVideo 
+        } as any);
       } else {
         // Fetch URL source to Buffer first since twitter-api-v2 v1.1 upload needs it
         const response = await axios.get(asset.source as string, { responseType: 'arraybuffer', proxy: false });
         const buffer = Buffer.from(response.data);
-        mediaId = await this.api.v1.uploadMedia(buffer, { mimeType });
+        mediaId = await this.api.v1.uploadMedia(buffer, { 
+          mimeType, 
+          type: isVideo ? 'video/mp4' : undefined,
+          chunked: isVideo 
+        } as any);
       }
 
       return mediaId;

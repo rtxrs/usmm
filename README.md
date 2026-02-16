@@ -207,6 +207,7 @@ Visit the root URL (`https://usmm.global-desk.top`) to view the **Spider Pipelin
 *   **Security & Privacy**: 
     *   **Stateless Proxy**: Credentials are interpreted in-flight and never stored permanently.
     *   **Rolling Cache (Redis)**: Account IDs and active filaments are cached in Redis with a **24-hour sliding expiration**. If an account is inactive for a day, all its references are automatically purged.
+    *   **Task Recovery (v2.0)**: Pending tasks are persisted in Redis. Upon server restart, USMM automatically reloads and resumes any unfinished tasks to ensure 100% delivery reliability.
     *   **Task Privacy**: Completed tasks are **immediately deleted** from the database. Failed tasks are retained for 1 hour for debugging before auto-deletion.
     *   **Early Validation**: Authentication is verified *before* heavy processing (like image resizing) to save server resources.
     *   **Tenant-Aware Rate Limiting**: Requests are limited by a combined key of `Sender IP + x-platform-id`. This prevents distributed spam against specific accounts.
@@ -224,9 +225,9 @@ Visit the root URL (`https://usmm.global-desk.top`) to view the **Spider Pipelin
     *   X / Twitter: API v2 (Tweets) & v1.1 (Media)
     *   Slack: Webhook Integration
 *   **Protocol Compliance**: All external requests explicitly bypass proxies (`proxy: false`) for maximum reliability.
-*   **Strict Validation**: USMM performs real-time metadata validation for images (resolution/integrity) and structural validation for multi-part auth tokens.
-*   **Fail-Safe**: Automatic transition to text-only if media upload fails or is rejected by the target platform.
-
+    *   **Strict Validation**: USMM performs real-time metadata validation for images (resolution/integrity) and structural validation for multi-part auth tokens.
+    *   **High-Reliability Video (Chunked Uploads)**: Large video assets (up to 100MB) are processed using chunked/resumable upload protocols for both Facebook and X (Twitter), ensuring parity and stability for high-res content like seismic replays.
+    *   **Fail-Safe**: Automatic transition to text-only if media upload fails or is rejected by the target platform.
 ---
 
 ## 🧪 Stress Testing
