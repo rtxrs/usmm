@@ -21,30 +21,12 @@ pipeline {
     }
     
     stages {
-        stage('Checkout') {
+        stage('Checkout and Build') {
             steps {
-                echo 'Checking out USMM...'
+                echo 'Checking out and building USMM...'
                 checkout scm
-            }
-        }
-        
-        stage('Install Dependencies') {
-            steps {
-                echo 'Installing dependencies...'
                 sh 'npm install -g pnpm && pnpm install --frozen-lockfile'
-            }
-        }
-        
-        stage('TypeScript Check') {
-            steps {
-                echo 'Running TypeScript check...'
                 sh 'npx tsc --noEmit || true'
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                echo 'Building USMM...'
                 sh 'pnpm run build'
             }
         }
@@ -52,16 +34,22 @@ pipeline {
         stage('Deploy to Production') {
             steps {
                 echo 'Deploying USMM to production...'
-                sshagent(['oci-web-server']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_SERVER} '
-                            cd ${TARGET_PATH} && \\
-                            git pull origin main && \\
-                            sudo pnpm install && \\
-                            sudo pnpm run build && \\
-                            sudo pm2 restart ${SERVICE_NAME}
-                        '
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'github-rtxrs', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
+                    sshagent(['oci-web-server']) {
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_SERVER} "
+                                cd /var/www && \\
+                                if [ ! -d \"usmm\" ]; then
+                                    git clone https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/rtxrs/usmm.git usmm
+                                fi
+                                cd /var/www/usmm && \\
+                                git pull origin main && \\
+                                sudo pnpm install && \\
+                                sudo pnpm run build && \\
+                                sudo pm2 restart ${SERVICE_NAME}
+                            "
+                        '''
+                    }
                 }
             }
         }
