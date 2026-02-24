@@ -52,15 +52,17 @@ pipeline {
         stage('Deploy to Production') {
             steps {
                 echo 'Deploying USMM to production...'
-                sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_SERVER} '
-                        cd ${TARGET_PATH} && \\
-                        git pull origin main && \\
-                        sudo pnpm install && \\
-                        sudo pnpm run build && \\
-                        sudo pm2 restart ${SERVICE_NAME}
-                    '
-                '''
+                sshagent(['oci-web-server']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@${TARGET_SERVER} '
+                            cd ${TARGET_PATH} && \\
+                            git pull origin main && \\
+                            sudo pnpm install && \\
+                            sudo pnpm run build && \\
+                            sudo pm2 restart ${SERVICE_NAME}
+                        '
+                    '''
+                }
             }
         }
     }
