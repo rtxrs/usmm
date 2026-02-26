@@ -279,6 +279,29 @@ export class SocialMediaService {
     return await this.queue.getStats();
   }
 
+  // Improved error handling to surface Facebook API errors
+  async getFacebookErrorDetails(error: any): Promise<{ code: string; message: string }> {
+    const errorData = error.response?.data;
+    const statusCode = error.response?.status;
+    const errorCode = errorData?.error?.code;
+    const errorMessage = errorData?.error?.message || error.message;
+
+    // Map Facebook error codes to meaningful error types
+    if (statusCode === 401 || errorCode === 'OAuthException') {
+      return { code: 'FACEBOOK_OAUTH_ERROR', message: errorMessage };
+    }
+    if (errorCode === 1 || statusCode === 500) {
+      return { code: 'FACEBOOK_UNKNOWN_ERROR', message: errorMessage };
+    }
+    if (statusCode === 403) {
+      return { code: 'FACEBOOK_PERMISSION_ERROR', message: errorMessage };
+    }
+    if (statusCode === 429) {
+      return { code: 'FACEBOOK_RATE_LIMIT', message: errorMessage };
+    }
+    return { code: 'FACEBOOK_API_ERROR', message: errorMessage };
+  }
+
   async validateToken(forceRealCheck: boolean = false) {
     return await this.getClient().validateToken(forceRealCheck);
   }
