@@ -64,8 +64,9 @@ export abstract class BaseSocialClient {
    * Can be overridden by subclasses for platform-specific logic.
    */
   protected shouldRetryOnError(statusCode: number | undefined, errorCode: number | undefined, error: any): boolean {
-    // Default: retry on 500, 503, and unknown errors
-    return statusCode === 500 || statusCode === 503 || statusCode === undefined;
+    // Default: retry on transient server errors (500, 502, 503, 504), timeout (408), and unknown errors
+    const transientStatuses = [408, 500, 502, 503, 504];
+    return statusCode === undefined || transientStatuses.includes(statusCode);
   }
 
   /**

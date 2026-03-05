@@ -30,6 +30,7 @@ const EnvSchema = z.object({
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.string().default('6379').transform(Number),
   REDIS_PASSWORD: z.string().optional(),
+  ALLOW_SYSTEM_PROXY: z.string().default('false').transform((v) => v === 'true'),
 });
 
 const processEnv = EnvSchema.safeParse(process.env);

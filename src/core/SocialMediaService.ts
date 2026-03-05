@@ -67,7 +67,7 @@ export class SocialMediaService {
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
       const url = await this.getClient().getProfilePicUrl();
-      const response = await axios.get(url, { responseType: 'arraybuffer', proxy: false });
+      const response = await axios.get(url, { responseType: 'arraybuffer', proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false });
       fs.writeFileSync(filePath, response.data);
       logger.debug('Cached profile picture', { platform: this.platform, pageId: this.pageId });
     } catch (e: any) {

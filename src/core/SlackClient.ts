@@ -2,11 +2,14 @@ import axios from 'axios';
 import type { FISResponse, MediaAsset } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { SlackFormatter } from '../utils/SlackFormatter.js';
+import { BaseSocialClient } from './BaseSocialClient.js';
+import { config } from '../config.js';
 
-export class SlackClient {
+export class SlackClient extends BaseSocialClient {
   private webhookUrl: string;
 
   constructor(webhookUrl: string) {
+    super('Slack');
     this.webhookUrl = this.validateAndNormalizeUrl(webhookUrl);
   }
 
@@ -29,9 +32,6 @@ export class SlackClient {
 
   async uploadMedia(asset: MediaAsset): Promise<string> {
     // Slack webhooks don't support direct media upload in the same way FB/X do.
-    // Instead, we provide the URL in the blocks.
-    // If we have a Buffer, we might need a public storage, but USMM is a stateless proxy.
-    // For now, we'll return the source as is if it's a string (URL), or a placeholder if it's a Buffer.
     if (typeof asset.source === 'string') {
       return asset.source;
     }
@@ -55,7 +55,7 @@ export class SlackClient {
         payload.icon_url = options?.slackIconUrl || 'https://usmm.global-desk.top/images/USMM-logo-full-transparent.png';
       }
 
-      const response = await axios.post(this.webhookUrl, payload, { proxy: false });
+      const response = await this.requestWithRetry(() => axios.post(this.webhookUrl, payload, { proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false }));
 
       return {
         success: true,
@@ -68,8 +68,6 @@ export class SlackClient {
   }
 
   async validateToken(forceRealCheck: boolean = false): Promise<{ valid: boolean; name?: string; error?: string }> {
-    // Slack webhooks don't have a simple "verify" endpoint that doesn't post.
-    // We can only check the URL structure.
     return { valid: true, name: 'Slack Webhook' };
   }
 
@@ -94,11 +92,7 @@ export class SlackClient {
   }
 
   private handleError(error: any): FISResponse {
-    logger.error('Slack API Error', { 
-      data: error.response?.data,
-      message: error.message 
-    });
-
+    this.handleApiError(error);
     return {
       success: false,
       error: {

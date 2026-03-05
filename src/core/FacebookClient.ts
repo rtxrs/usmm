@@ -2,18 +2,26 @@ import axios, { AxiosInstance } from 'axios';
 import FormData from 'form-data';
 import type { FISResponse, MediaAsset } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { BaseSocialClient } from './BaseSocialClient.js';
+import { config } from '../config.js';
 
-export class FacebookClient {
+export class FacebookClient extends BaseSocialClient {
   private api: AxiosInstance;
   private pageId: string;
 
   constructor(pageId: string, accessToken: string) {
+    super('Facebook');
     this.pageId = pageId;
     this.api = axios.create({
       baseURL: `https://graph.facebook.com/v24.0`,
       params: { access_token: accessToken },
-      proxy: false, // Force bypass any system/environment proxy
+      proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false, // Configurable proxy bypass
     });
+  }
+
+  protected shouldRetryOnError(statusCode: number | undefined, errorCode: number | undefined, error: any): boolean {
+    // Facebook specific: retry on 500, 503, or code 1 (Unknown error)
+    return super.shouldRetryOnError(statusCode, errorCode, error) || errorCode === 1;
   }
 
   async uploadMedia(asset: MediaAsset): Promise<string> {
@@ -23,7 +31,7 @@ export class FacebookClient {
     if (asset.source instanceof Buffer) {
       buffer = asset.source;
     } else {
-      const response = await axios.get(asset.source as string, { responseType: 'arraybuffer', proxy: false });
+      const response = await axios.get(asset.source as string, { responseType: 'arraybuffer', proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false });
       buffer = Buffer.from(response.data);
     }
 
@@ -44,7 +52,7 @@ export class FacebookClient {
     const baseUrl = 'https://graph.facebook.com/v24.0';
     const endpoint = `${baseUrl}/${this.pageId}/photos`;
     const accessToken = (this.api.defaults.params as any)?.access_token;
-    
+
     const form = new FormData();
     if (accessToken) form.append('access_token', accessToken);
     form.append('source', buffer, { filename: 'upload.png' });
@@ -53,7 +61,7 @@ export class FacebookClient {
 
     const response = await this.requestWithRetry(() => axios.post(endpoint, form, {
       headers: form.getHeaders(),
-      proxy: false
+      proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false
     }));
 
     return response.data.id;
@@ -79,7 +87,7 @@ export class FacebookClient {
         upload_phase: 'start',
         file_size: fileSize
       },
-      proxy: false
+      proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false
     }));
 
     const uploadSessionId = startRes.data.upload_session_id;
@@ -100,7 +108,7 @@ export class FacebookClient {
 
       await this.requestWithRetry(() => axios.post(endpoint, form, {
         headers: form.getHeaders(),
-        proxy: false
+        proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false
       }));
 
       startOffset = endOffset;
@@ -114,13 +122,13 @@ export class FacebookClient {
         upload_phase: 'finish',
         upload_session_id: uploadSessionId
       },
-      proxy: false
+      proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false
     }));
 
     // Wait for processing to begin and poll for readiness
     logger.debug('FB video upload finished, polling for readiness...', { videoId });
     const isReady = await this.pollVideoStatus(videoId);
-    
+
     if (!isReady) {
       logger.warn('FB video status polling timed out or failed, proceeding anyway...', { videoId });
     }
@@ -134,13 +142,13 @@ export class FacebookClient {
         const res = await this.api.get(`/${videoId}`, { params: { fields: 'status' } });
         const status = res.data.status?.video_status;
         logger.debug(`Checking FB video status`, { videoId, status, attempt: i + 1 });
-        
+
         if (status === 'ready') return true;
         if (status === 'deleted' || status === 'error') {
           logger.error('FB video processing failed', { videoId, status });
           return false;
         }
-        
+
         // Wait longer between polls (starting at 5s, then 10s, 15s...)
         await new Promise(resolve => setTimeout(resolve, 5000 * (i + 1)));
       } catch (e: any) {
@@ -149,37 +157,6 @@ export class FacebookClient {
       }
     }
     return false;
-  }
-
-  private async requestWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 3000): Promise<T> {
-    try {
-      return await fn();
-    } catch (error: any) {
-      const statusCode = error.response?.status;
-      const errorCode = error.response?.data?.error?.code;
-      
-      // Handle rate limiting (429)
-      if (statusCode === 429) {
-        const retryAfter = error.response?.headers?.['retry-after'] || 60;
-        logger.warn(`Facebook API rate limited. Waiting ${retryAfter}s before retry...`, { 
-          retryAfter 
-        });
-        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-        if (retries > 0) {
-          return this.requestWithRetry(fn, retries - 1, delay);
-        }
-      }
-      
-      // Retry on 500 (Internal Server Error) or code 1 (Unknown error)
-      if (retries > 0 && (statusCode === 500 || errorCode === 1 || statusCode === 503)) {
-        logger.warn(`Facebook API transient error (Status: ${statusCode}, Code: ${errorCode}). Retrying...`, { 
-          retriesLeft: retries 
-        });
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return this.requestWithRetry(fn, retries - 1, delay * 2);
-      }
-      throw error;
-    }
   }
 
   async createFeedPost(caption: string, media?: { id: string, type: 'image' | 'video' }[], options?: any): Promise<FISResponse> {
@@ -226,7 +203,7 @@ export class FacebookClient {
     try {
       const endpoint = type === 'video' ? `/${this.pageId}/video_stories` : `/${this.pageId}/photo_stories`;
       const paramName = type === 'video' ? 'video_id' : 'photo_id';
-      
+
       const response = await this.requestWithRetry(() => this.api.post(endpoint, null, {
         params: { [paramName]: mediaId }
       }));
@@ -278,22 +255,8 @@ export class FacebookClient {
   }
 
   private handleError(error: any): FISResponse {
+    this.handleApiError(error);
     const errorData = error.response?.data;
-    const statusCode = error.response?.status;
-    const requestInfo = {
-      method: error.config?.method,
-      url: error.config?.url,
-      params: error.config?.params,
-      hasData: !!error.config?.data
-    };
-
-    logger.error('Facebook API Error', { 
-      status: statusCode, 
-      data: errorData,
-      message: error.message,
-      request: requestInfo
-    });
-
     return {
       success: false,
       error: {

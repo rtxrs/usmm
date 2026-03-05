@@ -3,6 +3,7 @@ import axios from 'axios';
 import type { FISResponse, MediaAsset } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { BaseSocialClient } from './BaseSocialClient.js';
+import { config } from '../config.js';
 
 interface TwitterCredentials {
   appKey: string;
@@ -77,7 +78,7 @@ export class TwitterClient extends BaseSocialClient {
         } as any);
       } else {
         // Fetch URL source to Buffer first since twitter-api-v2 v1.1 upload needs it
-        const response = await axios.get(asset.source as string, { responseType: 'arraybuffer', proxy: false });
+        const response = await axios.get(asset.source as string, { responseType: 'arraybuffer', proxy: config.ALLOW_SYSTEM_PROXY ? undefined : false });
         const buffer = Buffer.from(response.data);
         mediaId = await this.api.v1.uploadMedia(buffer, { 
           mimeType, 
